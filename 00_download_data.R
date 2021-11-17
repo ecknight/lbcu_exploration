@@ -34,7 +34,7 @@ sens <- rbind(sens.tx, sens.iw, sens.mn, sens.bc) %>%
   unique()
 sens
 
-#3. Download data----
+#3. Download movement ata----
 dat.tx <- getMovebankLocationData(id.tx, sensorID=c(82798), login=loginStored, removeDuplicatedTimestamps=TRUE, includeOutliers=TRUE)
 dat.iw <- getMovebankLocationData(id.iw, sensorID=c(82798, 653, 7842954), login=loginStored, removeDuplicatedTimestamps=TRUE, includeOutliers=TRUE)
 dat.mn <- getMovebankLocationData(id.mn, sensorID=c(653, 2365683, 1297673380, 77740402), login=loginStored, removeDuplicatedTimestamps=TRUE, includeOutliers=TRUE)
@@ -45,3 +45,15 @@ write.csv(dat.tx, "Data/Movebank - MCP Long-billed Curlews Texas Gulf Coast.csv"
 write.csv(dat.iw, "Data/Movebank - Long-billed Curlew Migration from the Intermountain West.csv", row.names=FALSE)
 write.csv(dat.mn, "Data/Movebank - Long-billed Curlew full annual cycle movement ecology - Montana.csv", row.names=FALSE)
 write.csv(dat.bc, "Data/Movebank - BC LBCU tracking study.csv", row.names = FALSE)
+
+#5. Download reference data----
+ref.tx <- getMovebankReferenceTable(id.tx, login=loginStored)
+ref.iw <- getMovebankReferenceTable(id.iw, login=loginStored)
+ref.mn <- getMovebankReferenceTable(id.mn, login=loginStored)
+ref.bc <- getMovebankReferenceTable(id.bc, login=loginStored)
+
+#6. Save out reference data----
+write.csv(ref.tx, "Data/Movebank - MCP Long-billed Curlews Texas Gulf Coast - Metadata.csv", row.names=FALSE)
+write.csv(ref.iw, "Data/Movebank - Long-billed Curlew Migration from the Intermountain West - Metadata.csv", row.names=FALSE)
+write.csv(ref.mn, "Data/Movebank - Long-billed Curlew full annual cycle movement ecology - Montana - Metadata.csv", row.names=FALSE)
+write.csv(ref.bc, "Data/Movebank - BC LBCU tracking study - Metadata.csv", row.names = FALSE)
