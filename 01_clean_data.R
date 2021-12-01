@@ -244,9 +244,9 @@ for(i in 1:nrow(ids)){
   
 }
 
-#9. Identify individuals that didn't migrate----
+#9. Identify individuals that didn't do at least 1 full migration----
 dat.mig <- dat.traj %>% 
-  mutate(mig = ifelse(id %in% c(77637912, 279278554, 279287739, 1425586836, 1425591196), 0, 1))
+  mutate(mig = ifelse(id %in% c(77637912, 279278554, 279287739, 1425586836, 1425591196, 77638376, 172070319), 0, 1))
 
 #10. Save out----
 
