@@ -255,136 +255,66 @@ for(i in 1:nrow(ids)){
   
 }
 
-#6. And then clustering----
-library(meanShiftR)
-
-#load("Foiegras24h_rw.Rdata")
-
-#Dataframe of predictions
-g = grab(fit24, what = "predicted", as_sf = FALSE) %>% 
-  dplyr::select(id, date, lon, lat) %>% 
-  data.frame() %>% 
-  mutate(year = year(date))
-
-g.utm <- g %>% 
-  data.frame() %>% 
-  st_as_sf(coords=c("lon", "lat"), crs=4326) %>% 
-  st_transform(crs=3857) %>% 
-  st_coordinates %>% 
-  cbind(g) %>% 
-  dplyr::select(id, year, date, X, Y)
-
-loop <- g.utm %>% 
-  dplyr::select(id, year) %>% 
-  unique()
-
-dat.shift <- data.frame()
-for(i in 1:nrow(loop)){
-  dat.i <- g.utm %>% 
-    dplyr::filter(year==loop$year[i],
-                  id==loop$id[i])
-  
-  mat1 <- matrix(dat.i$X)
-  mat2 <- matrix(dat.i$Y)
-  mat <- cbind(mat1, mat2)
-  
-  shift <- meanShift(mat,
-                     algorithm="KDTREE",
-                     bandwidth=c(1,1))
-  
-  dat.shift <- dat.i %>% 
-    mutate(cluster = shift[[1]]) %>% 
-    rbind(dat.shift)
-  
-  
-}
-
-dat.shift.n <- dat.shift %>% 
-  dplyr::select(-X, -Y) %>% 
-  group_by(id, year, cluster) %>% 
-  mutate(n = n()) %>% 
-  ungroup()
-
-#7. Put it all together----
+#6. Put it all together----
 pred <- pred24 %>% 
   dplyr::select(-x, -y) %>% 
   full_join(states2) %>% 
-  full_join(dat.shift.n) %>% 
-  mutate(predictedState = ifelse(predictedState == 1, "stationary", "migration"))
+  mutate(predictedState = ifelse(predictedState == 1, "Stationary", "Migration"))
 
-write.csv(pred, "Data/LBCU_Filtered&PredictedData_hmm_movebyes_cluster.csv", row.names=FALSE)
-  
-#8. Visualize----
-pred.categories <- data.frame(table(pred$id, pred$predictedState, pred$n)) %>% 
-  rename(id = Var1, state = Var2, n = Var3) %>% 
-  dplyr::filter(Freq > 0) %>% 
-  mutate(n=as.numeric(n))
-
-ggplot(pred.categories) +
-  geom_jitter(aes(x=state, y=n))
-
-for(i in 1:nrow(ids)){
-  pred.i <- pred %>% 
-    dplyr::filter(id==ids$id[i]) %>% 
-    mutate(doy = yday(date),
-           year = year(date))
-  plot.i <- ggplot(pred.i) +
-    geom_path(aes(x=lon, y=lat)) +
-    geom_point(aes(x=lon, y=lat, colour=log(n)), alpha = 0.5, size=3) +
-        scale_colour_viridis_c() +
-#    scale_colour_manual(values=c("orange", "blue"), name="State")
-      facet_grid(predictedState~year)
-  
-  ggsave(plot.i, file=paste0("Figures/Cluster/", ids$id[i],".jpeg"), width=8, height=6)
-  
-  print(paste0("Finished plot ", i, " of ", nrow(ids), " birds"))
-  
-}
-
-#Clustering doesn't work for stopovers, only for breed/winter
+write.csv(pred, "Data/LBCU_Filtered&PredictedData_hmm_movebyes.csv", row.names=FALSE)
 
 #9. Classify to season----
-pred <- read.csv("Data/LBCU_Filtered&PredictedData_hmm_movebyes_cluster.csv")
+lats <- read.csv("Data/LBCU_BreedWintLats.csv")
+pred <- read.csv("Data/LBCU_Filtered&PredictedData_hmm_movebyes_cluster.csv") %>% 
+  inner_join(lats) %>% 
+  mutate(doy = yday(date))
 
+#9.1. Earliest & latest date > breeding latitude
+pred.breed.date <- pred %>% 
+  dplyr::filter(lat > breedlat) %>% 
+  group_by(id, year) %>% 
+  summarize(firstdate = min(date),
+            lastdate = max(date))
+
+pred.breed <- pred %>% 
+  left_join(pred.breed.date) %>% 
+  dplyr::filter(date >= firstdate & date <= lastdate) %>% 
+  mutate(season="breed") %>% 
+  dplyr::select(-firstdate, -lastdate)
+
+#9.2. Earliest & latest date < wintering latitude
+pred.wint.date <- pred %>% 
+  dplyr::filter(lat < wintlat) %>% 
+  mutate(wintyear = ifelse(doy < 135, year-1, year)) %>% 
+  group_by(id, wintyear) %>% 
+  summarize(firstdate = min(date),
+            lastdate = max(date))
+
+pred.wint <- pred %>% 
+  left_join(pred.wint.date) %>% 
+  dplyr::filter(date >= firstdate & date <= lastdate) %>% 
+  mutate(season="winter") %>% 
+  dplyr::select(-firstdate, -lastdate, -wintyear)
+
+#9.3 Stopovers with movement model
 table(pred$z.map)
 table(pred$z.post.max)
 table(pred$z.post.thresh)
 table(pred$predictedState)
 table(pred$z.map, pred$z.post.max, pred$predictedState)
 
-pred.breed <-  pred %>% 
-  dplyr::filter(predictedState=="stationary") %>% 
-  group_by(id, year) %>% 
-  summarize(lat = max(lat)) %>% 
-  ungroup() %>% 
-  left_join(pred)  %>% 
-  mutate(season="breed") %>% 
-  dplyr::select(id, year, cluster, season)
+pred.migration <- pred %>% 
+  anti_join(pred.breed) %>% 
+  anti_join(pred.wint) %>% 
+  mutate(season = case_when(predictedState=="stationary" ~ "stopover",
+                            predictedState == "migration" & z.map=="Stationary" & z.post.max=="Stationary" ~ "stopover"),
+         season = case_when(is.na(season) ~ "migration",
+                            !is.na(season) ~ season))
 
-pred.winter <- pred %>% 
-  dplyr::filter(predictedState=="stationary") %>% 
-  group_by(id, year) %>% 
-  summarize(lat = min(lat)) %>% 
-  ungroup() %>% 
-  left_join(pred)  %>% 
-  mutate(season="winter") %>% 
-  dplyr::select(id, year, cluster, season)
-
-pred.season <- pred %>% 
-  left_join(rbind(pred.breed, pred.winter)) %>% 
-  arrange(id, date) %>% 
-  mutate(doy = yday(date)) %>% 
-  mutate(season = case_when(!is.na(season) ~ season,
-                            predictedState=="stationary" ~ "stopover",
-                            n==1 ~ "migration",
-                            predictedState == "migration" & z.map == "Migration" ~ "migration",
-                            predictedState == "migration" & z.map=="Stationary" & z.post.max=="Stationary" ~ "stopover")) %>% 
-  dplyr::filter(!(id==172070515 & year==2017 & doy > 50 & doy < 145),
-                !(id==46768108 & year==2015 & doy > 70 & doy < 94),
-                !(id==46769588 & year==2019 & doy > 73 & doy < 87),
-                !(id==973657763 & year==2020 & doy > 74 & doy < 80),
-                !(id==973657763 & year==2020 & doy > 99 & doy < 104))
-
+pred.season <- rbind(pred.breed, pred.wint, pred.migration) %>% 
+  mutate(seasonmig = case_when(season=="migration" & doy > 135 ~ "fallmigration",
+                               season=="migration" & doy <= 135 ~ "springmigration",
+                               !is.na(season) ~ season))
 #Troubleshooting
 table(pred.season$season)
 
@@ -394,18 +324,16 @@ pred.na <- pred.season %>%
 ggplot(pred.season) +
   geom_point(aes(x=lon, y=lat, colour=season))
 
-ggplot(pred.na) +
-  geom_point(aes(x=lon, y=lat, colour=n)) +
-  facet_grid(predictedState ~ z.map) +
-  scale_colour_viridis_c()
-
 table(pred.na$n, pred.na$z.map)
+
+ids <- pred.season %>% 
+  dplyr::select(id) %>% 
+  unique()
 
 for(i in 1:nrow(ids)){
   pred.i <- pred.season %>% 
     dplyr::filter(id==ids$id[i]) %>% 
-    mutate(doy = yday(date),
-           year = year(date))
+    arrange(date)
   plot.i <- ggplot(pred.i) +
     geom_path(aes(x=lon, y=lat)) +
     geom_point(aes(x=lon, y=lat, colour=season), alpha = 0.5, size=3) +
