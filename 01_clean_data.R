@@ -3,6 +3,8 @@ library(lubridate)
 library(ggmap)
 library(gtools)
 library(readxl)
+library(adehabitatLT)
+library(data.table)
 
 options(scipen=99999)
 
@@ -105,8 +107,51 @@ dat.mn <- raw.mn %>%
          study = "MN") %>% 
   dplyr::select(id, tag, datetime, long, lat, argos, error, smaj, smin, eor, sensor, study)
 
-dat.mx <- raw.mx %>% 
-  rename(id = ID, lat = Latitud, long = Longitud, )
+dat.mx.13 <- rbind(raw.mx.1, raw.mx.3) %>% 
+  rename(id=ID, datetime = `Fecha de loc.`, long.dms = Longitud, lat.dms = Latitud, argos = `Calidad loc.`, error = `Rayo de error`, smaj = `Semieje mayor`, smin = `Semieje menor`, eor = `Angulo de la elipse`) %>% 
+  separate(long.dms, into=c("long.d", "long.m", "long.s", "long.junk"), remove=FALSE) %>% 
+  separate(lat.dms, into=c("lat.d", "lat.m", "lat.s", "lat.junk"), remove=FALSE) %>% 
+  mutate(tag = paste0(id), 1,
+         study = "MX",
+         datetime = ymd_hms(datetime),
+         sensor = "Argos Doppler Shift",
+         lat = as.numeric(lat.d) + as.numeric(lat.m)/60 + as.numeric(lat.s)/3600,
+         long = as.numeric(long.d) + as.numeric(long.m)/60 + as.numeric(long.s)/3600) %>% 
+  dplyr::select(id, tag, datetime, long, lat, argos, error, smaj, smin, eor, sensor, study)
+
+dat.mx.24 <- rbind(raw.mx.2, raw.mx.4) %>% 
+  rename(id = )
+
+dat.mx.24 <- rbind(raw.mx.2, raw.mx.4) %>% 
+  rename(id = `N&deg; ID`, datetime = `Fecha de loc.`, long.dms = Longitud, lat.dms = Latitud, argos = `Calidad loc.`, error = `Rayo de error`, smaj = `Semieje mayor`, smin = `Semieje menor`, eor = `Angulo de la elipse`) %>% 
+  separate(long.dms, into=c("long.d", "long.m", "long.s", "long.junk"), remove=FALSE) %>% 
+  separate(lat.dms, into=c("lat.d", "lat.m", "lat.s", "lat.junk"), remove=FALSE) %>% 
+  mutate(tag = paste0(id), 1,
+         study = "MX",
+         datetime = ymd_hms(datetime),
+         sensor = "Argos Doppler Shift",
+         lat = as.numeric(lat.d) + as.numeric(lat.m)/60 + as.numeric(lat.s)/3600,
+         long = as.numeric(long.d) + as.numeric(long.m)/60 + as.numeric(long.s)/3600) %>% 
+  dplyr::select(id, tag, datetime, long, lat, argos, error, smaj, smin, eor, sensor, study)
+
+dat.mx.5 <- raw.mx.5  %>% 
+  rename(id = `N&deg; ID`, datetime = `Fecha de loc.`, long.dms = Longitud, lat.dms = Latitud, argos = `Calidad loc.`, error = `Rayo de error`, smaj = `Semieje mayor`, smin = `Semieje menor`, eor = `Angulo de la elipse`) %>% 
+  separate(long.dms, into=c("long.d", "long.m", "long.s", "long.junk"), remove=FALSE) %>% 
+  separate(lat.dms, into=c("lat.d", "lat.m", "lat.s", "lat.junk"), remove=FALSE) %>% 
+  mutate(tag = paste0(id), 1,
+         study = "MX",
+         datetime = ymd_hms(datetime),
+         sensor = "Argos Doppler Shift",
+         lat = as.numeric(lat.d) + as.numeric(lat.m)/60 + as.numeric(lat.s)/3600,
+         long = as.numeric(long.d) + as.numeric(long.m)/60 + as.numeric(long.s)/3600) %>% 
+  dplyr::select(id, tag, datetime, long, lat, argos, error, smaj, smin, eor, sensor, study)
+
+dat.mx <- rbind(dat.mx.13, dat.mx.24, dat.mx.5) %>% 
+  mutate(id = as.numeric(id),
+         error = as.numeric(error),
+         smaj = as.numeric(smaj),
+         smin = as.numeric(smin),
+         eor = as.numeric(eor)) 
 
 #3. Tidy metadata----
 ref <- smartbind(ref.tx, ref.bc, ref.iw, ref.mn) %>% 
@@ -115,10 +160,18 @@ ref <- smartbind(ref.tx, ref.bc, ref.iw, ref.mn) %>%
   dplyr::filter(!is.na(id)) %>% 
   unique() %>% 
   mutate(on = ymd_hms(on),
-         off = ymd_hms(off))
+         off = ymd_hms(off),
+         mass = NA) %>% 
+  rbind(ref.mx %>% 
+              mutate(on = dmy(on),
+                     off = dmy(off),
+                     tag = paste0(id, 1),
+                     name = NA) %>% 
+              dplyr::select(study, sex, id, tag, name, on, off, mass))
+
 
 #4. Put together----
-dat.raw <- rbind(dat.bc, dat.iw, dat.lt, dat.ml, dat.mn, dat.tx) %>% 
+dat.raw <- rbind(dat.bc, dat.iw, dat.lt, dat.ml, dat.mn, dat.tx, dat.mx) %>% 
   left_join(ref) %>% 
   mutate(year = year(datetime),
          doy = yday(datetime),
@@ -174,7 +227,7 @@ dat.traj <- rbindlist(traj) %>%
   mutate(dist.log = log(dist),
          dist.dt = dist/dt)
 
-#9. Visualize for truncation dates---
+#8. Visualize for truncation dates----
 ids <- dat.traj %>% 
   dplyr::select(id) %>% 
   unique()
@@ -191,11 +244,11 @@ for(i in 1:nrow(ids)){
   
 }
 
-#10. Identify individuals that didn't migrate----
+#9. Identify individuals that didn't migrate----
 dat.mig <- dat.traj %>% 
   mutate(mig = ifelse(id %in% c(77637912, 279278554, 279287739, 1425586836, 1425591196), 0, 1))
 
-#10. Save out
+#10. Save out----
 
 write.csv(dat.mig, "Data/LBCUCleanedData.csv", row.names = FALSE)
 
