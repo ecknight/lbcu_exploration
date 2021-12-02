@@ -47,7 +47,6 @@ dat.mig <- dat %>%
 dat.fg <- dat.mig %>% 
   rename(date = datetime, lc = argos, lon = long) %>% 
   dplyr::select(id, date, lc, lon, lat, smaj, smin, eor) 
-#  dplyr::filter(id %in% c(1615638072, 46200872, 279282698, 890835056, 1546948337)) #just test a few birds first
 
 #Fit
 fit24 <- fit_ssm(dat.fg, 
@@ -84,10 +83,6 @@ g = grab(fit24, what = "predicted", as_sf = FALSE) %>%
   dplyr::select(id, date, lon, lat) %>% 
   rename(ID=id) %>% 
   data.frame()
-
-#Just try a few individuals first
-#g <- g %>% 
-#  dplyr::filter(ID %in% c(1615638072, 1425587959, 290353519, 145698291, 290351667))
 
 #Prep for HMM
 md <- prepData(g, coordNames = c("lon","lat"), type="LL")
@@ -147,7 +142,6 @@ for(i in 1:nrow(ids)){
   print(paste0("Finished plot ", i, " of ", nrow(ids), " birds"))
   
 }
-
 
 #4. Bayesmove without segmentation----
 
@@ -274,13 +268,18 @@ pred.breed.date <- pred %>%
   dplyr::filter(lat > breedlat) %>% 
   group_by(id, year) %>% 
   summarize(firstdate = min(date),
-            lastdate = max(date))
+            lastdate = max(date)) %>% 
+  mutate(firstdoy = yday(firstdate),
+         lastdoy = yday(lastdate))
+
+ggplot(pred.breed.date) +
+  geom_point(aes(x=firstdoy, y=lastdoy))
 
 pred.breed <- pred %>% 
   left_join(pred.breed.date) %>% 
   dplyr::filter(date >= firstdate & date <= lastdate) %>% 
   mutate(season="breed") %>% 
-  dplyr::select(-firstdate, -lastdate)
+  dplyr::select(-firstdate, -lastdate, -firstdoy, -lastdoy)
 
 #9.2. Earliest & latest date < wintering latitude
 pred.wint.date <- pred %>% 
@@ -288,13 +287,20 @@ pred.wint.date <- pred %>%
   mutate(wintyear = ifelse(doy < 135, year-1, year)) %>% 
   group_by(id, wintyear) %>% 
   summarize(firstdate = min(date),
-            lastdate = max(date))
+            lastdate = max(date)) %>% 
+  mutate(firstdoy = yday(firstdate),
+         lastdoy = yday(lastdate))
+
+ggplot(pred.wint.date) +
+  geom_point(aes(x=firstdoy, y=lastdoy))
 
 pred.wint <- pred %>% 
   left_join(pred.wint.date) %>% 
   dplyr::filter(date >= firstdate & date <= lastdate) %>% 
   mutate(season="winter") %>% 
-  dplyr::select(-firstdate, -lastdate, -wintyear)
+  dplyr::select(-firstdate, -lastdate, -wintyear, -firstdoy, -lastdoy)
+
+#This definitely isn't adequate for departure & arrival timing
 
 #9.3 Stopovers with movement model
 table(pred$z.map)
@@ -306,9 +312,10 @@ table(pred$z.map, pred$z.post.max, pred$predictedState)
 pred.migration <- pred %>% 
   anti_join(pred.breed) %>% 
   anti_join(pred.wint) %>% 
-  mutate(season = case_when(predictedState=="stationary" ~ "stopover",
-                            predictedState == "migration" & z.map=="Stationary" & z.post.max=="Stationary" ~ "stopover"),
-         season = case_when(is.na(season) ~ "migration",
+  mutate(season = case_when(predictedState=="stationary" ~ "stopover"),
+#                            predictedState == "migration" & z.map=="Stationary" & z.post.max=="Stationary" ~ "stopover"),
+         season = case_when(lag(season)=="stopover" ~ "stopover",
+                            is.na(season) ~ "migration",
                             !is.na(season) ~ season))
 
 pred.season <- rbind(pred.breed, pred.wint, pred.migration) %>% 
@@ -347,3 +354,5 @@ for(i in 1:nrow(ids)){
 }
 
 write.csv(pred.season, "Data/LBCU_Filtered&Predicted&SegmentedData.csv", row.names = FALSE)
+
+#ok this is FAR from perfect, but I'm going with it for the connectivity stuff for now
