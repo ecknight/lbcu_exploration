@@ -28,6 +28,7 @@ dat <- read.csv("Data/LBCUCleanedData.csv") %>%
 #290350903 in 2017
 #290352179 in 2020
 #77638376
+#99900 in 2021 winter weird pt
 #Birds that only have 2021 data
 
 #TO DO: ID BIRDS WITH 2 WINTERING GROUNDS MANUALLY####
@@ -257,13 +258,13 @@ pred <- pred24 %>%
 
 write.csv(pred, "Data/LBCU_Filtered&PredictedData_hmm_movebyes.csv", row.names=FALSE)
 
-#9. Classify to season----
+#7. Classify to season----
 lats <- read.csv("Data/LBCU_BreedWintLats.csv")
 pred <- read.csv("Data/LBCU_Filtered&PredictedData_hmm_movebyes_cluster.csv") %>% 
   inner_join(lats) %>% 
   mutate(doy = yday(date))
 
-#9.1. Earliest & latest date > breeding latitude
+#7.1. Earliest & latest date > breeding latitude
 pred.breed.date <- pred %>% 
   dplyr::filter(lat > breedlat) %>% 
   group_by(id, year) %>% 
@@ -355,4 +356,5 @@ for(i in 1:nrow(ids)){
 
 write.csv(pred.season, "Data/LBCU_Filtered&Predicted&SegmentedData.csv", row.names = FALSE)
 
-#ok this is FAR from perfect, but I'm going with it for the connectivity stuff for now
+#ok this is FAR from perfect, but I'm going with it for playing with connectivity stuff for now
+#ok yeah, it's definitely not good enough for formal analysis. Gotta come back
