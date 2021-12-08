@@ -49,14 +49,16 @@ dat.bc <- raw.bc %>%
   mutate(datetime = ymd_hms(datetime),
          study = "BC") %>% 
   dplyr::filter(algorithm.marked.outlier!="true") %>% 
-  dplyr::select(id, tag, datetime, long, lat, argos, error, smaj, smin, eor, sensor, study)
+  dplyr::select(id, tag, datetime, long, lat, argos, error, smaj, smin, eor, sensor, study) %>% 
+  mutate(depseason = "breed")
 
 dat.tx <- raw.tx %>% 
   dplyr::filter(algorithm.marked.outlier!="true") %>% 
   rename(datetime = timestamp, long = location.long, lat= location.lat, error = argos.error.radius, smaj = argos.semi.major, smin = argos.semi.minor, eor = argos.orientation, sensor = sensor.type, study = study.name, id = individual.id, tag = tag.id, argos = argos.lc) %>% 
   mutate(datetime = ymd_hms(datetime),
          study = "TX") %>% 
-  dplyr::select(id, tag, datetime, long, lat, argos, error, smaj, smin, eor, sensor, study)
+  dplyr::select(id, tag, datetime, long, lat, argos, error, smaj, smin, eor, sensor, study) %>% 
+  mutate(depseason = "winter")
 
 dat.iw <- raw.iw %>% 
   dplyr::filter(algorithm.marked.outlier!="true") %>% 
@@ -64,7 +66,8 @@ dat.iw <- raw.iw %>%
   rename(datetime = timestamp, long = location.long, lat= location.lat, error = argos.error.radius, smaj = argos.semi.major, smin = argos.semi.minor, eor = argos.orientation, sensor = sensor.type, study = study.name, id = individual.id, tag = tag.id, argos = argos.lc) %>% 
   mutate(datetime = ymd_hms(datetime),
          study = "IW") %>% 
-  dplyr::select(id, tag, datetime, long, lat, argos, error, smaj, smin, eor, sensor, study)
+  dplyr::select(id, tag, datetime, long, lat, argos, error, smaj, smin, eor, sensor, study) %>% 
+  mutate(depseason = "breed")
 
 dat.lt <- raw.lt %>% 
   rename(datetime = GPS_YYYY.MM.DD_HH.MM.SS, long=lon, tag = serial) %>% 
@@ -78,7 +81,8 @@ dat.lt <- raw.lt %>%
          study = "Jay", 
          id = 99900,
          datetime = mdy_hm(datetime)) %>% 
-  dplyr::select(id, tag, datetime, long, lat, argos, error, smaj, smin, eor, sensor, study)
+  dplyr::select(id, tag, datetime, long, lat, argos, error, smaj, smin, eor, sensor, study) %>% 
+  mutate(depseason = "breed")
 
 dat.ml <- raw.ml %>% 
   rename(datetime = Fix.Time, long = Long., lat = Lat.) %>% 
@@ -93,7 +97,8 @@ dat.ml <- raw.ml %>%
          sensor="GPS",
          study="Jay",
          datetime = ymd_hms(datetime)) %>% 
-  dplyr::select(id, tag, datetime, long, lat, argos, error, smaj, smin, eor, sensor, study)
+  dplyr::select(id, tag, datetime, long, lat, argos, error, smaj, smin, eor, sensor, study) %>% 
+  mutate(depseason = "breed")
 
 dat.mn <- raw.mn %>% 
   dplyr::filter(sensor.type=="GPS") %>% 
@@ -105,7 +110,8 @@ dat.mn <- raw.mn %>%
          argos = "G",
          datetime = ymd_hms(datetime),
          study = "MN") %>% 
-  dplyr::select(id, tag, datetime, long, lat, argos, error, smaj, smin, eor, sensor, study)
+  dplyr::select(id, tag, datetime, long, lat, argos, error, smaj, smin, eor, sensor, study) %>% 
+  mutate(depseason = "breed")
 
 dat.mx.13 <- rbind(raw.mx.1, raw.mx.3) %>% 
   rename(id=ID, datetime = `Fecha de loc.`, long.dms = Longitud, lat.dms = Latitud, argos = `Calidad loc.`, error = `Rayo de error`, smaj = `Semieje mayor`, smin = `Semieje menor`, eor = `Angulo de la elipse`) %>% 
@@ -151,7 +157,8 @@ dat.mx <- rbind(dat.mx.13, dat.mx.24, dat.mx.5) %>%
          error = as.numeric(error),
          smaj = as.numeric(smaj),
          smin = as.numeric(smin),
-         eor = as.numeric(eor)) 
+         eor = as.numeric(eor))  %>% 
+  mutate(depseason = "winter")
 
 #3. Tidy metadata----
 ref <- smartbind(ref.tx, ref.bc, ref.iw, ref.mn) %>% 
@@ -248,7 +255,12 @@ for(i in 1:nrow(ids)){
 dat.mig <- dat.traj %>% 
   mutate(mig = ifelse(id %in% c(77637912, 279278554, 279287739, 1425586836, 1425591196, 77638376, 172070319), 0, 1))
 
-#10. Save out----
+
+#10. Clean out some problematic points----
+dat.clean <- dat.mig %>% 
+  dplyr::filter(!(id==290350903 & lon > -106))
+
+#11. Save out----
 
 write.csv(dat.mig, "Data/LBCUCleanedData.csv", row.names = FALSE)
 
