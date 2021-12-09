@@ -47,9 +47,7 @@ fit24 <- readRDS("Foiegras24h_rw.rds")
 #3. Create predictions for each day----
 g = grab(fit24, what = "predicted", as_sf = FALSE) %>% 
   dplyr::select(id, date, lon, lat) %>% 
-  data.frame() %>% 
-  mutate(year = year(date),
-         idyear = paste0(id, "-", year))
+  data.frame()
 
 #4. Remove predictions for big breaks in transmission----
 dat.dt <- dat %>% 
@@ -58,6 +56,10 @@ dat.dt <- dat %>%
   dplyr::filter(logdt > 13)
 
 hist(dat.dt$logdt)
+
+dat.g <- g
+
+write.csv(dat.g, "Data/LBCUFilteredData.csv", row.names = FALSE)
 
 #TODO: Come back to this. Consider removing anything with > 5 days transmision gap
 #46200880
@@ -68,5 +70,3 @@ hist(dat.dt$logdt)
 #                         id==46769588 & datetime <= "2019-03-14 04:55:49" ~ paste0(id, 1),
 #                         id==46769588 & datetime > "2019-03-14 04:55:49" ~ paste0(id, 2),
 #                        !is.na(id) ~ id))
-
-
