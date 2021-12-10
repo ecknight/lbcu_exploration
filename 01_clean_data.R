@@ -24,6 +24,9 @@ raw.mx.3 <- read_excel("Data/mx/Male_86873.xlsx")
 raw.mx.4 <- read_excel("Data/mx/Male_33089.xlsx")
 raw.mx.5 <- read_excel("Data/mx/Male_33091.xlsx")
 
+#Nebraska
+raw.nb <- read_excel("Data/Long-billed_Curlew_Data_Nebraska_93033_93034.xlsx")
+
 #1b. GPS data - has temp---
 raw.lt <- read.csv("Data/LT May 2020 to July 2021.csv")
 raw.ml <- read.csv("Data/ML May-Sep 2021.csv")
@@ -69,6 +72,21 @@ dat.iw <- raw.iw %>%
   dplyr::select(id, tag, datetime, long, lat, argos, error, smaj, smin, eor, sensor, study) %>% 
   mutate(depseason = "breed")
 
+dat.nb <- raw.nb %>% 
+  dplyr::filter(!is.na('Location class')) %>% 
+  dplyr::rename(datetime = 'Location date', long = Longitude, lat = Latitude, id=PTT, argos='Location class') %>% 
+  mutate(tag = id,
+         error = NA,
+         smaj= NA,
+         smin = NA,
+         eor = NA,
+         sensor="Argos Doppler Shift",
+         study = "NB") %>% 
+  dplyr::select(id, tag, datetime, long, lat, argos, error, smaj, smin, eor, sensor, study) %>% 
+  mutate(depseason = "breed") %>% 
+  unique() %>% 
+  arrange(id, datetime)
+  
 dat.lt <- raw.lt %>% 
   rename(datetime = GPS_YYYY.MM.DD_HH.MM.SS, long=lon, tag = serial) %>% 
   dplyr::filter(fix==3) %>% 
@@ -122,11 +140,9 @@ dat.mx.13 <- rbind(raw.mx.1, raw.mx.3) %>%
          datetime = ymd_hms(datetime),
          sensor = "Argos Doppler Shift",
          lat = as.numeric(lat.d) + as.numeric(lat.m)/60 + as.numeric(lat.s)/3600,
-         long = as.numeric(long.d) + as.numeric(long.m)/60 + as.numeric(long.s)/3600) %>% 
+         long = as.numeric(long.d) + as.numeric(long.m)/60 + as.numeric(long.s)/3600,
+         long = -long) %>% 
   dplyr::select(id, tag, datetime, long, lat, argos, error, smaj, smin, eor, sensor, study)
-
-dat.mx.24 <- rbind(raw.mx.2, raw.mx.4) %>% 
-  rename(id = )
 
 dat.mx.24 <- rbind(raw.mx.2, raw.mx.4) %>% 
   rename(id = `N&deg; ID`, datetime = `Fecha de loc.`, long.dms = Longitud, lat.dms = Latitud, argos = `Calidad loc.`, error = `Rayo de error`, smaj = `Semieje mayor`, smin = `Semieje menor`, eor = `Angulo de la elipse`) %>% 
@@ -137,7 +153,8 @@ dat.mx.24 <- rbind(raw.mx.2, raw.mx.4) %>%
          datetime = ymd_hms(datetime),
          sensor = "Argos Doppler Shift",
          lat = as.numeric(lat.d) + as.numeric(lat.m)/60 + as.numeric(lat.s)/3600,
-         long = as.numeric(long.d) + as.numeric(long.m)/60 + as.numeric(long.s)/3600) %>% 
+         long = as.numeric(long.d) + as.numeric(long.m)/60 + as.numeric(long.s)/3600,
+         long = -long) %>% 
   dplyr::select(id, tag, datetime, long, lat, argos, error, smaj, smin, eor, sensor, study)
 
 dat.mx.5 <- raw.mx.5  %>% 
@@ -149,7 +166,8 @@ dat.mx.5 <- raw.mx.5  %>%
          datetime = ymd_hms(datetime),
          sensor = "Argos Doppler Shift",
          lat = as.numeric(lat.d) + as.numeric(lat.m)/60 + as.numeric(lat.s)/3600,
-         long = as.numeric(long.d) + as.numeric(long.m)/60 + as.numeric(long.s)/3600) %>% 
+         long = as.numeric(long.d) + as.numeric(long.m)/60 + as.numeric(long.s)/3600,
+         long = -long) %>% 
   dplyr::select(id, tag, datetime, long, lat, argos, error, smaj, smin, eor, sensor, study)
 
 dat.mx <- rbind(dat.mx.13, dat.mx.24, dat.mx.5) %>% 
@@ -178,7 +196,7 @@ ref <- smartbind(ref.tx, ref.bc, ref.iw, ref.mn) %>%
 
 
 #4. Put together----
-dat.raw <- rbind(dat.bc, dat.iw, dat.lt, dat.ml, dat.mn, dat.tx, dat.mx) %>% 
+dat.raw <- rbind(dat.bc, dat.iw, dat.lt, dat.ml, dat.mn, dat.tx, dat.mx, dat.nb) %>% 
   left_join(ref) %>% 
   mutate(year = year(datetime),
          doy = yday(datetime),
@@ -194,9 +212,8 @@ dat1 <- dat.raw %>%
   rbind(dat.raw %>% 
           dplyr::filter(is.na(off))) %>% 
   dplyr::filter(!is.na(lat),
-                error < 10000,
                 long < -70,
-                !(str_sub(id, 1, 5)=="14255" & doy==123 & year==2019))
+                argos %in% c("0", "1", "2", "3", "G"))
 
 #6. Remove duplicate timestamps----
 date.freq <- data.frame(table(dat1$datetime, dat1$id)) %>% 
@@ -245,7 +262,7 @@ for(i in 1:nrow(ids)){
   plot.i <- ggplot(dat.i) +
     geom_point(aes(x=datetime, y=log(dist.dt), colour=factor(year)))
   
-  #  ggsave(plot.i, file=paste0("Figures/R2n/", ids$id[i],".jpeg"), width=8, height=6)
+    ggsave(plot.i, file=paste0("Figures/R2n/", ids$id[i],".jpeg"), width=8, height=6)
   
   print(paste0("Finished plot ", i, " of ", nrow(ids), " birds"))
   
@@ -258,9 +275,11 @@ dat.mig <- dat.traj %>%
 
 #10. Clean out some problematic points----
 dat.clean <- dat.mig %>% 
-  dplyr::filter(!(id==290350903 & lon > -106))
+  dplyr::filter(!(id==290350903 & long > -106),
+                !(str_sub(id, 1, 5)=="14255" & doy==123 & year==2019),
+                !(study=="NB" & argos %in% c("0", "1")))
 
 #11. Save out----
 
-write.csv(dat.mig, "Data/LBCUCleanedData.csv", row.names = FALSE)
+write.csv(dat.clean, "Data/LBCUCleanedData.csv", row.names = FALSE)
 
