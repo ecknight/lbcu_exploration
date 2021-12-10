@@ -32,9 +32,7 @@ fmap(fit24, conf=TRUE, what="predicted")
 
 #Without CIs
 pred24 <- grab(fit24, what = "predicted", as_sf=FALSE)
-coast <- ne_countries(scale=110, returnclass = "sf") 
 p <- ggplot() +
-  annotation_spatial(data = coast, fill = grey(0.8), lwd = 0) +
   geom_path(data = pred24, aes(x = lon, y = lat, group = id, col=id)) +
   geom_point(data = pred24, aes(x = lon, y = lat, group = id, col=id)) +
   theme(legend.position = "none")
