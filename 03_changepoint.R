@@ -8,10 +8,8 @@ library(changepoint)
 
 options(scipen = 999)
 
-dat <- read.csv("Data/LBCUFilteredData.csv") %>% 
-  mutate(date = ymd_hms(date),
-         year = year(date),
-         doy = yday(date))
+dat <- read.csv("Data/LBCUFiltered&PredictedData.csv") %>% 
+  mutate(date = ymd_hms(date))
 
 #1. Split into single legs of migration for each individual----
 dat.leg <- dat %>% 
@@ -203,7 +201,7 @@ for(i in 1:length(ids)){
     facet_wrap(~legid, scales="free") +
     ggtitle(ids[i])
   
-  ggsave(filename=paste0("Figures/cp/", ids[i], ".jpeg"))
+#  ggsave(filename=paste0("Figures/cp/", ids[i], ".jpeg"))
   
 }
 
@@ -242,7 +240,7 @@ dat.date <- dat.cp %>%
          season1 = ifelse(completemig==0 & date >= depart, "migration", season1))
 table(dat.date$season1)
   
-
+#Visualize
 ids <- unique(dat.date$id)
 
 for(i in 1:length(ids)){
@@ -254,11 +252,27 @@ for(i in 1:length(ids)){
   ggplot(dat.i) +
     geom_path(aes(x=lon, y=lat)) +
     geom_point(aes(x=lon, y=lat, colour=season1)) +
-    facet_wrap(~legid, scales="free") +
+    facet_wrap(~legid) +
     ggtitle(ids[i])
   
-  ggsave(filename=paste0("Figures/Season/", ids[i], ".jpeg"))
+#  ggsave(filename=paste0("Figures/Season/", ids[i], ".jpeg"))
   
 }
 
 #NOPE. This definitely didn't work----
+
+#7. Use to get approx dates----
+date.mean <- dat.date %>% 
+  dplyr::select(legid, legseason, depart, arrive) %>% 
+  unique() %>% 
+  mutate(departdoy = yday(depart),
+         arrivedoy = yday(arrive)) %>% 
+  group_by(legseason) %>% 
+  summarize(departmean = mean(departdoy),
+            departmin = min(departdoy),
+            departmax = max(departdoy),
+            arrivemean = mean(arrivedoy),
+            arrivemin = min(arrivedoy),
+            arrivemax = max(arrivedoy)) %>% 
+  ungroup()
+date.mean
