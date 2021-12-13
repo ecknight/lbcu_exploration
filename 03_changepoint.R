@@ -276,3 +276,5 @@ date.mean <- dat.date %>%
             arrivemax = max(arrivedoy)) %>% 
   ungroup()
 date.mean
+
+write.csv(date.mean, "ApproxDatesFromChangepoint.csv", row.names = FALSE)
