@@ -45,4 +45,4 @@ dat$predictedState <- viterbi(m)
 dat$probState1 <- stateProbs(m)[,1]
 dat$probState2 <- stateProbs(m)[,2]
 
-write.csv(dat, "Data/LBCU_Filtered&PredictedData.csv", row.names = FALSE)
+write.csv(dat, "Data/LBCUFiltered&PredictedData.csv", row.names = FALSE)
