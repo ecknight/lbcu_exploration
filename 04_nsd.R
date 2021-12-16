@@ -65,7 +65,9 @@ nsdmax <- dat.traj %>%
                                "172070515-2019-2fall",
                                "1418896449-2021-1spring",
                                "1418878943-2021-1spring",
-                               "172070515-2017-1spring"))
+                               "172070515-2017-1spring",
+                               "281981414-2018-1spring",
+                               "290347351-2019-2fall"))
 hist(nsdmax$nsdmax)
 
 dat.full <- dat.traj %>% 
