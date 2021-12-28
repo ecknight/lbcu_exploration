@@ -102,4 +102,9 @@ dat.cp <- dat %>%
   arrange(id, date) %>% 
   ungroup()
 
+#5. Save----
 write.csv(dat.cp, "Data/LBCUFiltered&Predicted&Legged&Clustered&CPedData.csv", row.names = FALSE)
+
+#6. Check # of birds----
+length(unique(dat.cp$id))
+#118
