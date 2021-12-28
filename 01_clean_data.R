@@ -280,6 +280,8 @@ dat.clean <- dat.mig %>%
                 !(study=="NB" & argos %in% c("0", "1")))
 
 #11. Save out----
-
 write.csv(dat.clean, "Data/LBCUCleanedData.csv", row.names = FALSE)
 
+#12. Number of birds----
+length(unique(dat.clean$id))
+#125
