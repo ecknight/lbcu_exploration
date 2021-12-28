@@ -39,3 +39,7 @@ dat.shift.n <- dat.shift %>%
 
 #5. Save out----
 write.csv(dat.shift.n, "Data/LBCUFiltered&Predicted&Legged&ClusteredData.csv", row.names=FALSE)
+
+#6. Check # of birds----
+length(unique(dat.shift.n$id))
+#118
