@@ -44,42 +44,13 @@ dat.traj <- rbindlist(traj) %>%
   rename(nsd = R2n) %>% 
   arrange(legid, date)
 
-#3. Tidy----
-#Remove incomplete legs
-nsdmax <- dat.traj %>% 
-  group_by(legid) %>% 
-  summarize(nsdmax = max(nsd)) %>% 
-  dplyr::filter(nsdmax > 38036899358.37,
-                !legid %in%  c("1418934379-2021-1spring",
-                               "172070515-2017-2fall",
-                               "99900-2021-2fall",
-                               "1146533212-2021-1spring",
-                               "1418878943-2021-1spring",
-                               "1418896449-2021-1spring",
-                               "99900-2021-2fall",
-                               "77639184-2016-2fall",
-                               "479364105-2019-1spring",
-                               "46768108-2016-2fall",
-                               "290352179-2020-2fall",
-                               "188150741-2021-1spring",
-                               "172070515-2019-2fall",
-                               "1418896449-2021-1spring",
-                               "1418878943-2021-1spring",
-                               "172070515-2017-1spring",
-                               "281981414-2018-1spring",
-                               "290347351-2019-2fall"))
-hist(nsdmax$nsdmax)
-
-dat.full <- dat.traj %>% 
-  dplyr::filter(legid %in% nsdmax$legid)
-
-#4. Visualize----
+#3. Visualize----
 #Visualize
 ids <- unique(dat.full$id)
 
 for(i in 1:length(ids)){
   
-  dat.i <- dat.full %>% 
+  dat.i <- dat.traj %>% 
     dplyr::filter(id==ids[i]) %>% 
     arrange(date) %>% 
     group_by(legid) %>% 
@@ -91,8 +62,13 @@ for(i in 1:length(ids)){
     facet_wrap(~legid, scales="free") +
     ggtitle(ids[i])
   
-#  ggsave(filename=paste0("Figures/ltraj/", ids[i], ".jpeg"))
+  ggsave(filename=paste0("Figures/ltraj/", ids[i], ".jpeg"))
   
 }
 
-write.csv(dat.full, "Data/LBCUFiltered&Predicted&LeggedData.csv", row.names = FALSE)
+#4. Check # of birds----
+length(unique(dat.traj$id))
+#118 - good
+
+#5. Save----
+write.csv(dat.traj, "Data/LBCUFiltered&Predicted&LeggedData.csv", row.names = FALSE)
