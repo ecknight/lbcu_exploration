@@ -2,16 +2,28 @@ library(tidyverse)
 library(lubridate)
 library(foieGras)
 
-
 options(scipen = 999)
 
 dat <- read.csv("Data/LBCUCleanedData.csv") %>% 
   arrange(id, datetime)
 
+length(unique(dat$id))
+#125 birds
+
+dat.id <- dat %>% 
+  dplyr:: select(id, mig, sensor) %>% 
+  unique()
+
+table(dat.id$sensor)
+
+smaj.na <- dat %>% 
+  dplyr::filter(is.na(smaj))
+
+table(smaj.na$id, smaj.na$sensor)
+
 #1. Wrangle----
 dat.mig <- dat %>% 
-  dplyr::filter(!(is.na(smaj) & sensor=="Argos Doppler Shift"),
-                mig==1)
+  dplyr::filter(mig==1)
 
 #2. Filter with foiegras----
 #Wrangle
@@ -58,6 +70,11 @@ hist(dat.dt$logdt)
 dat.g <- g
 
 write.csv(dat.g, "Data/LBCUFilteredData.csv", row.names = FALSE)
+
+#5. Number of birds----
+length(unique(dat.g$id))
+#118 - Good. Took out 7 birds that never migrated.
+
 
 #TODO: Come back to this. Consider removing anything with > 5 days transmision gap
 #46200880
