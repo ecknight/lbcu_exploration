@@ -14,6 +14,7 @@ dat <- read.csv("Data/LBCUFilteredData.csv") %>%
 #1. Prep for HMM---
 md <- prepData(dat, coordNames = c("lon","lat"), type="LL")
 
+#2. Choose starting parameters----
 ## Visualize to choose initial parameters
 plot(density(abs(na.omit(md$angle))))
 plot(density(na.omit(md$step)), xlim=c(0,100))
@@ -30,19 +31,22 @@ angleMean0 <- c(pi,0)
 kappa0 <- c(1,1) 
 anglePar0 <- c(angleMean0,kappa0)
 
-#Fit model
+#3. Fit model----
 m <- fitHMM(data=md, 
             nbStates = 2, 
             stepPar0 = stepPar0, 
             anglePar0 = anglePar0, 
             formula = ~1)
 
-#Visualize
+#4. Visualize----
 plot(m, plotCI = TRUE, plotTracks=FALSE)
 
-#Add states to data
+#5. Add states to data----
 dat$predictedState <- viterbi(m)
 dat$probState1 <- stateProbs(m)[,1]
 dat$probState2 <- stateProbs(m)[,2]
+
+#6. check # of birds----
+length(unique(dat$id))
 
 write.csv(dat, "Data/LBCUFiltered&PredictedData.csv", row.names = FALSE)
