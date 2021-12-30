@@ -46,7 +46,7 @@ dat.traj <- rbindlist(traj) %>%
 
 #3. Visualize----
 #Visualize
-ids <- unique(dat.full$id)
+ids <- unique(dat.traj$id)
 
 for(i in 1:length(ids)){
   
@@ -62,13 +62,13 @@ for(i in 1:length(ids)){
     facet_wrap(~legid, scales="free") +
     ggtitle(ids[i])
   
-  ggsave(filename=paste0("Figures/ltraj/", ids[i], ".jpeg"))
+#  ggsave(filename=paste0("Figures/ltraj/", ids[i], ".jpeg"))
   
 }
 
 #4. Check # of birds----
 length(unique(dat.traj$id))
-#118 - good
+#122 - good
 
 #5. Save----
 write.csv(dat.traj, "Data/LBCUFiltered&Predicted&LeggedData.csv", row.names = FALSE)
