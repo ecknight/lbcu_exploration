@@ -42,4 +42,4 @@ write.csv(dat.shift.n, "Data/LBCUFiltered&Predicted&Legged&ClusteredData.csv", r
 
 #6. Check # of birds----
 length(unique(dat.shift.n$id))
-#118
+#122 - good
