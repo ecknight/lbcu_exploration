@@ -16,7 +16,7 @@ options(scipen=99999)
 raw.bc <- read.csv("Data/Movebank - BC LBCU tracking study.csv")
 raw.tx <- read.csv("Data/Movebank - MCP Long-billed Curlews Texas Gulf Coast.csv")
 raw.iw <- read.csv("Data/Movebank - Long-billed Curlew Migration from the Intermountain West.csv")
-raw.wy <- read.csv("Data/Movebank - Long-billed Curlew - Western Wyoming")
+raw.wy <- read.csv("Data/Movebank - Long-billed Curlew - Western Wyoming.csv")
 
 #Mexico - tried doing this with a loop and smartbind, but didn't work
 raw.mx.1 <- read_excel("Data/mx/Female_86872.xlsx")
@@ -42,6 +42,8 @@ ref.tx <- read.csv("Data/Movebank - MCP Long-billed Curlews Texas Gulf Coast - M
   mutate(study = "TX")
 ref.iw <- read.csv("Data/Movebank - Long-billed Curlew Migration from the Intermountain West - Metadata.csv") %>% 
   mutate(study = "IW")
+ref.wy <- read.csv("Data/Movebank - Long-billed Curlew - Western Wyoming - Metadata.csv") %>% 
+  mutate(study="WY")
 ref.mn <- read.csv("Data/Movebank - Long-billed Curlew full annual cycle movement ecology - Montana - Metadata.csv") %>% 
   mutate(study = "MN")
 ref.mx <- read.csv("Data/mx/LBCU_ReferenceData_Mexico.csv") %>% 
@@ -70,6 +72,14 @@ dat.iw <- raw.iw %>%
   rename(datetime = timestamp, long = location.long, lat= location.lat, error = argos.error.radius, smaj = argos.semi.major, smin = argos.semi.minor, eor = argos.orientation, sensor = sensor.type, study = study.name, id = individual.id, tag = tag.id, argos = argos.lc) %>% 
   mutate(datetime = ymd_hms(datetime),
          study = "IW") %>% 
+  dplyr::select(id, tag, datetime, long, lat, argos, error, smaj, smin, eor, sensor, study) %>% 
+  mutate(depseason = "breed")
+
+dat.wy <- raw.wy %>% 
+  dplyr::filter(algorithm.marked.outlier!="true") %>% 
+  rename(datetime = timestamp, long = location.long, lat= location.lat, error = argos.error.radius, smaj = argos.semi.major, smin = argos.semi.minor, eor = argos.orientation, sensor = sensor.type, id = individual.id, tag = tag.id, argos = argos.lc) %>% 
+  mutate(datetime = ymd_hms(datetime),
+         study = "WY") %>% 
   dplyr::select(id, tag, datetime, long, lat, argos, error, smaj, smin, eor, sensor, study) %>% 
   mutate(depseason = "breed")
 
@@ -180,7 +190,7 @@ dat.mx <- rbind(dat.mx.13, dat.mx.24, dat.mx.5) %>%
   mutate(depseason = "winter")
 
 #3. Tidy metadata----
-ref <- smartbind(ref.tx, ref.bc, ref.iw, ref.mn) %>% 
+ref <- smartbind(ref.tx, ref.bc, ref.iw, ref.mn, ref.wy) %>% 
   dplyr::rename(sex = animal_sex, id = animal_id, tag = tag_id, name = animal_local_identifier, on = deploy_on_timestamp, off = deploy_off_timestamp) %>% 
   dplyr::select(study, sex, id, tag, name, on, off) %>% 
   dplyr::filter(!is.na(id)) %>% 
@@ -197,7 +207,7 @@ ref <- smartbind(ref.tx, ref.bc, ref.iw, ref.mn) %>%
 
 
 #4. Put together----
-dat.raw <- rbind(dat.bc, dat.iw, dat.lt, dat.ml, dat.mn, dat.tx, dat.mx, dat.nb) %>% 
+dat.raw <- rbind(dat.bc, dat.iw, dat.lt, dat.ml, dat.mn, dat.tx, dat.mx, dat.nb, dat.wy) %>% 
   left_join(ref) %>% 
   mutate(year = year(datetime),
          doy = yday(datetime),
