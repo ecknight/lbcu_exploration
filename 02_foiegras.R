@@ -73,15 +73,4 @@ write.csv(dat.g, "Data/LBCUFilteredData.csv", row.names = FALSE)
 
 #5. Number of birds----
 length(unique(dat.g$id))
-#118 - Good. Took out 7 birds that never migrated.
-
-
-#TODO: Come back to this. Consider removing anything with > 5 days transmision gap
-#46200880
-#  mutate(id = case_when(id==172070515 & datetime <= "2017-02-19 11:18:29" ~ paste0(id, 1),
-#                         id==172070515 & datetime > "2017-02-19 11:18:29" ~ paste0(id, 2),
-#                         id==46768108 & datetime <= "2015-03-11 01:07:49" ~ paste0(id, 1),
-#                         id==46768108 & datetime > "2015-03-11 01:07:49" ~ paste0(id, 2),
-#                         id==46769588 & datetime <= "2019-03-14 04:55:49" ~ paste0(id, 1),
-#                         id==46769588 & datetime > "2019-03-14 04:55:49" ~ paste0(id, 2),
-#                        !is.na(id) ~ id))
+#122 - Good. Took out 7 birds that never migrated.
