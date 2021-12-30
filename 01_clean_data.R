@@ -16,6 +16,7 @@ options(scipen=99999)
 raw.bc <- read.csv("Data/Movebank - BC LBCU tracking study.csv")
 raw.tx <- read.csv("Data/Movebank - MCP Long-billed Curlews Texas Gulf Coast.csv")
 raw.iw <- read.csv("Data/Movebank - Long-billed Curlew Migration from the Intermountain West.csv")
+raw.wy <- read.csv("Data/Movebank - Long-billed Curlew - Western Wyoming")
 
 #Mexico - tried doing this with a loop and smartbind, but didn't work
 raw.mx.1 <- read_excel("Data/mx/Female_86872.xlsx")

@@ -48,7 +48,7 @@ write.csv(dat.tx, "Data/Movebank - MCP Long-billed Curlews Texas Gulf Coast.csv"
 write.csv(dat.iw, "Data/Movebank - Long-billed Curlew Migration from the Intermountain West.csv", row.names=FALSE)
 write.csv(dat.mn, "Data/Movebank - Long-billed Curlew full annual cycle movement ecology - Montana.csv", row.names=FALSE)
 write.csv(dat.bc, "Data/Movebank - BC LBCU tracking study.csv", row.names = FALSE)
-write.csv(dat.wy, "Data/Movebank - Long-billed Curlew - Western Wyoming", row.names = FALSE)
+write.csv(dat.wy, "Data/Movebank - Long-billed Curlew - Western Wyoming.csv", row.names = FALSE)
 
 #5. Download reference data----
 ref.tx <- getMovebankReferenceTable(id.tx, login=loginStored)
@@ -62,4 +62,4 @@ write.csv(ref.tx, "Data/Movebank - MCP Long-billed Curlews Texas Gulf Coast - Me
 write.csv(ref.iw, "Data/Movebank - Long-billed Curlew Migration from the Intermountain West - Metadata.csv", row.names=FALSE)
 write.csv(ref.mn, "Data/Movebank - Long-billed Curlew full annual cycle movement ecology - Montana - Metadata.csv", row.names=FALSE)
 write.csv(ref.bc, "Data/Movebank - BC LBCU tracking study - Metadata.csv", row.names = FALSE)
-write.csv(ref.wy, "Data/Movebank - Long-billed Curlew - Western Wyoming - Metadata", row.names = FALSE)
+write.csv(ref.wy, "Data/Movebank - Long-billed Curlew - Western Wyoming - Metadata.csv", row.names = FALSE)
