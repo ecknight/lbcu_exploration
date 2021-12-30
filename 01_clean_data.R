@@ -288,7 +288,8 @@ dat.mig <- dat.traj %>%
 dat.clean <- dat.mig %>% 
   dplyr::filter(!(id==290350903 & long > -106),
                 !(str_sub(id, 1, 5)=="14255" & doy==123 & year==2019),
-                !(study=="NB" & argos %in% c("0", "1")))
+                !(study=="NB" & argos %in% c("0", "1")),
+                !(id==1378421381 & year==2020 & doy < 151))
 
 #11. Save out----
 write.csv(dat.clean, "Data/LBCUCleanedData.csv", row.names = FALSE)
