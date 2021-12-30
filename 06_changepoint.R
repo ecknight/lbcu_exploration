@@ -107,4 +107,4 @@ write.csv(dat.cp, "Data/LBCUFiltered&Predicted&Legged&Clustered&CPedData.csv", r
 
 #6. Check # of birds----
 length(unique(dat.cp$id))
-#118
+#122
