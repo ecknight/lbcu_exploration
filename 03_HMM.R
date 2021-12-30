@@ -11,7 +11,7 @@ dat <- read.csv("Data/LBCUFilteredData.csv") %>%
          year = year(date),
          doy = yday(date))
 
-#1. Prep for HMM---
+#1. Prep for HMM----
 md <- prepData(dat, coordNames = c("lon","lat"), type="LL")
 
 #2. Choose starting parameters----
@@ -48,5 +48,6 @@ dat$probState2 <- stateProbs(m)[,2]
 
 #6. check # of birds----
 length(unique(dat$id))
+#122 - good
 
 write.csv(dat, "Data/LBCUFiltered&PredictedData.csv", row.names = FALSE)
