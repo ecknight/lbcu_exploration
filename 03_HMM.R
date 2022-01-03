@@ -9,10 +9,14 @@ options(scipen = 999)
 dat <- read.csv("Data/LBCUFilteredData.csv") %>% 
   mutate(date = ymd_hms(date),
          year = year(date),
-         doy = yday(date))
+         doy = yday(date)) 
 
 #1. Prep for HMM----
-md <- prepData(dat, coordNames = c("lon","lat"), type="LL")
+dat.ll <- dat %>% 
+  dplyr::select(id, lat, lon) %>% 
+  dplyr::rename(ID=id)
+
+md <- prepData(dat.ll, coordNames = c("lon","lat"), type="LL")
 
 #2. Choose starting parameters----
 ## Visualize to choose initial parameters
