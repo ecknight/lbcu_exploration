@@ -309,9 +309,7 @@ table(dat.season$segment)
 #10. Add birds that never left back in----
 dat.all <- dat.nodep %>% 
   dplyr::select(study, id, sensor, sex, mass, legid, lat, lon, X, Y, date, doy, hmmstate, staten, probState2, nsd, dist, legseason, segment, season) %>% 
-  mutate(dep = 0) %>% 
-  rbind(dat.season %>% 
-          mutate(dep = 1))
+  rbind(dat.season)
 
 table(dat.all$segment)
 #415, 432
