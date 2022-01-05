@@ -279,21 +279,22 @@ for(i in 1:nrow(ids)){
   
 }
 
-#9. Identify individuals that didn't do at least 1 full migration----
-dat.mig <- dat.traj %>% 
-  mutate(mig = ifelse(id %in% c(77637912, 279278554, 279287739, 1425586836, 1425591196, 77638376, 172070319), 0, 1))
-
-
 #10. Clean out some problematic points----
-dat.clean <- dat.mig %>% 
+dat.clean <- dat.traj %>% 
   dplyr::filter(!(id==290350903 & long > -106),
                 !(str_sub(id, 1, 5)=="14255" & doy==123 & year==2019),
                 !(study=="NB" & argos %in% c("0", "1")),
-                !(id==1378421381 & year==2020 & doy < 151))
+                !(id==1378421381 & year==2020 & doy < 151),
+                !(id==145698291 & year==2021 & doy > 129),
+                !(id==290352179 & year==2021 & doy > 103),
+                !(id==46768189))
+#46768189 only has points for one day
+#145698291 2021 > doy 129 is likely dead
+#290352179 died on migration, remove pts > doy 103 in 2021
 
 #11. Save out----
 write.csv(dat.clean, "Data/LBCUCleanedData.csv", row.names = FALSE)
 
 #12. Number of birds----
 length(unique(dat.clean$id))
-#125
+#128
