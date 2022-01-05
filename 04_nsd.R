@@ -68,7 +68,7 @@ for(i in 1:length(ids)){
 
 #4. Check # of birds----
 length(unique(dat.traj$id))
-#122 - good
+#128 - good
 
 #5. Save----
 write.csv(dat.traj, "Data/LBCUFiltered&Predicted&LeggedData.csv", row.names = FALSE)
