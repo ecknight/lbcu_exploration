@@ -3,17 +3,12 @@ library(lubridate)
 
 options(scipen = 99999)
 
-
-#9. Identify individuals that didn't do at least 1 full migration----
-dat.mig <- dat.traj %>% 
-  mutate(mig = ifelse(id %in% c(86872, 77637912, 279278554, 279287739, 1425586836, 1425591196, 77638376, 172070319), 0, 1))
-
 #1. Read in data----
-dat.raw <- read.csv("Data/LBCUFiltered&Predicted&Legged&Clustered&CPedData.csv")
+dat.raw <- read.csv("Data/LBCUFiltered&Predicted&LeggedData.csv")
 
 #number of birds
 length(unique(dat.raw$id))
-#122
+#128
 
 #2. Add ID for each cluster of HMM states----
 legs <- unique(dat.raw$legid)
@@ -23,13 +18,13 @@ for(i in 1:length(legs)){
   dat.i <- dat.raw %>% 
     dplyr::filter(legid==legs[i])
   
-  dat.rle <- data.frame(length = rle(dat.i$predictedState)$lengths)
+  dat.rle <- data.frame(length = rle(dat.i$hmmstate)$lengths)
   dat.rle$id <- seq(1, nrow(dat.rle), 1)
   dat.stateid <- uncount(dat.rle, length) %>% 
     left_join(dat.rle)
   
   dat.i$stateid <- dat.stateid$id
-  dat.i$stateidn <- dat.stateid$length
+  dat.i$staten <- dat.stateid$length
   
   dat <- rbind(dat, dat.i)
 }
@@ -67,7 +62,8 @@ dat.dt <- gaps %>%
 #1378421381 - none missed
 
 #Remove & classify legs where departure & arrival missed
-#2 classified by hand because never migrated
+#2 gaps taken out because there are multiple for that id/year
+#1 classified by hand because didn't start migration
 dat.gap <- dat %>%
   dplyr::filter(legid %in% c("94033-2019-2fall",
                               "94034-2019-2fall",
@@ -84,13 +80,13 @@ dat.gap <- dat %>%
                             legseason=="2fall" & doy >= enddoy ~ "winter",
                             legseason=="1spring" & doy <= startdoy ~ "winter",
                             legseason=="1spring" & doy >= enddoy ~ "breed",
-                            legid=="46200876-2017-2fall" ~ "winter",
-                            id=="86872" ~ "winter"),
+                            legid=="46200876-2017-2fall" ~ "winter"),
          segment="stationary") %>% 
   dplyr::select(-startdoy, -enddoy, -dtdays)
   
 
 #4. Legs where bird didn't start migration----
+#1 classified by hand because outside of date range (died perhaps?)
 dat.nodep <- dat %>% 
   anti_join(dat.gap) %>% 
   group_by(legid) %>% 
@@ -106,7 +102,9 @@ dat.nodep <- dat %>%
          segment = "stationary") %>% 
   dplyr::select(-nsdmax, -mindoy) %>% 
   rbind(dat.gap) %>% 
-  unique()
+  unique() %>% 
+  mutate(season = case_when(legid=="86872-2009-2fall" ~ "winter",
+                            !is.na(season) ~ season))
 
 #Data for birds that did start migration to carry on to next step
 dat.dep <- dat %>% 
@@ -117,7 +115,7 @@ dat.dep <- dat %>%
 #2 departures done manually because nsd < 20000000 and migration very fast
 #6 additional departures done manually because nsd > 200000000 on breeding grounds
 dat.depart <- dat.dep %>% 
-  dplyr::filter(predictedState==2,
+  dplyr::filter(hmmstate==2,
                 nsd > 20000000000) %>% 
   group_by(legid) %>% 
   arrange(date) %>% 
@@ -153,14 +151,13 @@ dat.depart <- dat.dep %>%
 #check if # of departures is same as # of legids
 length(unique(dat.dep$legid))
 table(dat.depart$segment)
-#431
+#432
 
 #6. Filter out 17 migration segments that weren't completed birds----
 dat.arr <- dat.depart %>%
-  dplyr::filter(!legid %in%  c("1418934379-2021-1spring",
+  dplyr::filter(!legid %in%c("1418934379-2021-1spring",
                                "99900-2021-2fall",
                                "1146533212-2021-1spring",
-                               "1418896449-2021-1spring",
                                "77639184-2016-2fall",
                                "479364105-2019-1spring",
                                "46768108-2016-2fall",
@@ -168,15 +165,16 @@ dat.arr <- dat.depart %>%
                                "172070515-2019-2fall",
                                "1418896449-2021-1spring",
                                "1418878943-2021-1spring",
-                               "172070515-2017-1spring",
+                               "172070319-2016-2fall",
                                "281981414-2018-1spring",
                                "290347351-2019-2fall",
                                "877974163-2020-1spring",
                                "46768277-2014-2fall",
-                               "145698291-2021-1spring"))
+                               "145698291-2021-1spring",
+                               "77638376-2015-2fall"))
 
 length(unique(dat.arr$legid))
-#431-16=417
+#432-17=415
 
 #7. Classify arrival----
 #arrival = first date of first run after departure of at least 30 stationary points
@@ -194,12 +192,12 @@ dat.migration <- dat.arr %>%
   dplyr::select(-segment2)
 
 table(dat.migration$segment)
-#417
+#415
 
 #Classify arrival via stopover rule
 #6 birds done manually due to a couple predicted nonstationary points after arrival (i.e., last segment rule doesn't work)
 dat.arrive.stopover <- dat.migration %>% 
-  mutate(segment2 = ifelse(segment=="migration" & predictedState==1 & stateidn > 30, "arrive", segment)) %>% 
+  mutate(segment2 = ifelse(segment=="migration" & hmmstate==1 & staten > 30, "arrive", segment)) %>% 
   dplyr::filter(segment2=="arrive") %>% 
   group_by(legid) %>% 
   arrange(date) %>% 
@@ -220,7 +218,7 @@ dat.arrive.stopover <- dat.migration %>%
 
 #Check number classified
 table(dat.arrive.stopover$segment)
-#317 - 100 missing
+#317 - 98 missing
 
 #Find missing ids
 arrive.ids <- dat.arr %>% 
@@ -231,12 +229,12 @@ arrive.ids <- dat.arr %>%
               dplyr::select(legid) %>% 
               unique())
 nrow(arrive.ids)
-#100
+#98
 
 #Classify arrival for remaining ids using last segment rule
 dat.arrive.last <- dat.migration %>% 
   dplyr::filter(legid %in% arrive.ids$legid,
-                predictedState==1) %>% 
+                hmmstate==1) %>% 
   group_by(legid) %>% 
   dplyr::filter(stateid==max(stateid)) %>% 
   arrange(date) %>% 
@@ -251,7 +249,7 @@ dat.arrive.last <- dat.migration %>%
   
 
 table(dat.arrive.last$segment)
-#100
+#98
 
 #Put two arrival classifications back together
 dat.arrive <- dat.arrive.stopover %>% 
@@ -259,7 +257,7 @@ dat.arrive <- dat.arrive.stopover %>%
   rbind(dat.arrive.last)
 
 table(dat.arrive$segment)
-#417
+#415
 
 #8. Put together & fill in the gaps as migratory or stationary----
 dat.state <- dat.depart %>% 
@@ -281,9 +279,10 @@ dat.state <- dat.depart %>%
   ungroup()
 
 table(dat.state$segment)
-#417, 431
+#415, 432
 
-#9. Classify seasons---
+#9. Classify seasons----
+#1 done manually because arrival date unknown from transmission gap & filling not working
 dat.season <- dat.state %>% 
   group_by(id) %>% 
   mutate(season=case_when(segment=="migration" & legseason=="1spring" ~ "springmig",
@@ -297,21 +296,25 @@ dat.season <- dat.state %>%
                           segment=="depart" & legseason=="1spring" ~ "springmig",
                           segment=="depart" & legseason=="2fall" ~ "fallmig")) %>% 
   fill(season, .direction="down") %>% 
-  dplyr::select(id, legid, lat, lon, X, Y, date, doy, predictedState, stateid, stateidn, probState2, nsd, dist, cp, segment, legseason, season) %>% 
-  ungroup()
+  dplyr::select(study, id, sensor, sex, mass, legid, lat, lon, X, Y, date, doy, hmmstate, staten, probState2, nsd, dist, legseason, segment, season) %>% 
+  ungroup() %>% 
+  mutate(season=case_when(legid=="172070515-2017-2fall" & doy < 169 & doy > 32 ~ "breed",
+                          legid=="46768108-2015-2fall" & doy < 154 & doy > 32 ~ "breed",
+                          legid=="46769588-2019-2fall" & doy < 169 & doy > 32 ~ "breed",
+                          !is.na(season) ~ season))
 
 table(dat.season$segment)
-#417, 431
+#415, 432
 
 #10. Add birds that never left back in----
 dat.all <- dat.nodep %>% 
-  dplyr::select(id, legid, lat, lon, X, Y, date, doy, predictedState, stateid, stateidn, probState2, nsd,  dist, cp, segment, legseason, season) %>% 
+  dplyr::select(study, id, sensor, sex, mass, legid, lat, lon, X, Y, date, doy, hmmstate, staten, probState2, nsd, dist, legseason, segment, season) %>% 
   mutate(dep = 0) %>% 
   rbind(dat.season %>% 
           mutate(dep = 1))
 
 table(dat.all$segment)
-#417, 431
+#415, 432
 
 #11. Visualize each bird----
 ids <- unique(dat.all$id)
@@ -328,13 +331,6 @@ for(i in 1:length(ids)){
     facet_wrap(~legid)
   
     ggsave(filename=paste0("Figures/Season/", ids[i], ".jpeg"))
-  
-  ggplot(dat.i) +
-    geom_point(aes(x=doy, y=factor(year(date)), colour=segment)) +
-    facet_wrap(~season)
-  
-#    ggsave(filename=paste0("Figures/Dotplot/", ids[i], ".jpeg"))
-  
 }
 
 #12. Visualize distribution of dates----
@@ -353,21 +349,5 @@ dates <- dat.all %>%
   ungroup()
 dates
 
-#14. Troubleshooting----
-dat.id <- dat.all %>% 
-  dplyr::filter(season=="winter", doy==150) %>% 
-  dplyr::select(legid, dep) %>% 
-  unique()
-#33088 & 94033 never migrated in 2010???
-#86872 never migrated at all
-#46200876 never migrated in 2017
-
-dat.id <- dat.all %>% 
-  dplyr::filter(id==290352179) %>% 
-  dplyr::select(id, legid, date, doy, lat, lon, nsd, predictedState, segment, season) %>% 
-  arrange(date)
-
-dat.og <- read.csv("Data/LBCUCleanedData.csv")
-
-dat.og.id <- dat.og %>% 
-  dplyr::filter(id==46768189)
+#14. Save----
+write.csv(dat.all, "Data/LBCUFiltered&Predicted&Legged&SeasonedData.csv", row.names = FALSE)
