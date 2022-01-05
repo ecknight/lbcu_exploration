@@ -393,8 +393,8 @@ write.csv(dat.tidy, "/Users/ellyknight/Dropbox/LBCU/LBCUSegmentedData.csv", row.
 dat.original <- read.csv("Data/LBCUCleanedData.csv")
 
 dat.og.id <- dat.original %>% 
-  dplyr::filter(id==94033) %>% 
-  dplyr::select(lat, long, R2n, datetime, doy)
+  dplyr::filter(id==46769840) %>% 
+  dplyr::select(id, year, lat, long, R2n, datetime, doy, dt)
 
 ggplot(dat.tidy %>% 
          dplyr::filter(state=="stationary")) +
