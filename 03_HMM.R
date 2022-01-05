@@ -46,12 +46,12 @@ m <- fitHMM(data=md,
 plot(m, plotCI = TRUE, plotTracks=FALSE)
 
 #5. Add states to data----
-dat$predictedState <- viterbi(m)
+dat$hmmstate <- viterbi(m)
 dat$probState1 <- stateProbs(m)[,1]
 dat$probState2 <- stateProbs(m)[,2]
 
 #6. check # of birds----
 length(unique(dat$id))
-#122 - good
+#128 - good
 
 write.csv(dat, "Data/LBCUFiltered&PredictedData.csv", row.names = FALSE)
