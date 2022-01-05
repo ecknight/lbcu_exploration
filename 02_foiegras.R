@@ -4,30 +4,16 @@ library(foieGras)
 
 options(scipen = 999)
 
+#1. Wrangle----
 dat <- read.csv("Data/LBCUCleanedData.csv") %>% 
   arrange(id, datetime)
 
 length(unique(dat$id))
-#125 birds
-
-dat.id <- dat %>% 
-  dplyr:: select(id, mig, sensor) %>% 
-  unique()
-
-table(dat.id$sensor)
-
-smaj.na <- dat %>% 
-  dplyr::filter(is.na(smaj))
-
-table(smaj.na$id, smaj.na$sensor)
-
-#1. Wrangle----
-dat.mig <- dat %>% 
-  dplyr::filter(mig==1)
+#128 birds
 
 #2. Filter with foiegras----
 #Wrangle
-dat.fg <- dat.mig %>% 
+dat.fg <- dat %>% 
   rename(date = datetime, lc = argos, lon = long) %>% 
   dplyr::select(id, date, lc, lon, lat, smaj, smin, eor) 
 
@@ -55,22 +41,53 @@ saveRDS(fit24, file = "Foiegras24h_rw.rds")
 fit24 <- readRDS("Foiegras24h_rw.rds")
 
 #3. Create predictions for each day----
-g = grab(fit24, what = "predicted", as_sf = FALSE) %>% 
-  dplyr::select(id, date, lon, lat) %>% 
-  data.frame()
+g <- grab(fit24, what = "predicted", as_sf = FALSE) %>% 
+    dplyr::select(id, date, lon, lat) %>% 
+    data.frame() %>% 
+    mutate(year = year(date),
+         doy = yday(date))
 
 #4. Remove predictions for big breaks in transmission----
 dat.dt <- dat %>% 
+  group_by(id) %>% 
   mutate(dtdays = dt/86400,
-    logdt = log(dt)) %>% 
-  dplyr::filter(logdt > 13)
+         days = lead(doy) - doy) %>% 
+  dplyr::filter(days > 14) %>% 
+  dplyr::select(id, year, doy, dt, dtdays, days) %>% 
+  rename(startdoy = doy) %>% 
+  mutate(startdoy = startdoy + 1,
+         enddoy = floor(startdoy + days) - 1,
+         id = as.character(id))
 
-hist(dat.dt$logdt)
+hist(dat.dt$days, breaks=100)
 
-dat.g <- g
+write.csv(dat.dt, "Data/TransmissionGaps.csv", row.names=FALSE)
 
-write.csv(dat.g, "Data/LBCUFilteredData.csv", row.names = FALSE)
+dat.dt.seq <- data.frame()
+for(i in 1:nrow(dat.dt)){
+  
+  dat.i <- data.frame(doy = seq(dat.dt$startdoy[i], dat.dt$enddoy[i], 1),
+                      id = dat.dt$id[i],
+                      year = dat.dt$year[i])
+  
+  dat.dt.seq <- rbind(dat.dt.seq, dat.i)
+}
 
-#5. Number of birds----
+dat.g <- g %>% 
+  anti_join(dat.dt.seq) %>% 
+  dplyr::select(id, date, doy, lon, lat) %>% 
+  unique()
+
+#5. Add metadata back in----
+dat.meta <- dat %>% 
+  dplyr::select(id, study, sensor, depseason, sex, mass) %>% 
+  unique() %>% 
+  full_join(dat.g %>% 
+              mutate(id = as.numeric(id)))
+
+#6. Save-----
+write.csv(dat.meta, "Data/LBCUFilteredData.csv", row.names = FALSE)
+
+#7. Number of birds----
 length(unique(dat.g$id))
-#122 - Good. Took out 7 birds that never migrated.
+#128
