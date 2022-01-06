@@ -6,18 +6,19 @@ library(meanShiftR)
 options(scipen = 99999)
 
 #1. Read in & wrangle----
-dat <- read.csv("Data/LBCUSegmented&StopoverData.csv") %>% 
+dat.raw <- read.csv("Data/LBCUFiltered&Predicted&Legged&Seasoned&StopoverData.csv") %>% 
+  mutate(date = ymd_hms(date))
+
+dat <- dat.raw %>% 
   dplyr::filter(season=="winter") %>% 
-  mutate(date = ymd_hms(date)) %>% 
   mutate(winteryear = ifelse(doy < 135, year-1, year),
          winterid = paste0(id, "-", winteryear))
-#TO DO: FINISH CLEANING TO GET THIS TO WORK
 
 #2. Prep for HMM----
 dat.ll <- dat %>% 
+  arrange(winterid, date) %>% 
   dplyr::select(winterid, lon, lat) %>% 
-  rename(ID=winterid) %>% 
-  dplyr::select(-ID)
+  rename(ID=winterid)
 
 md <- prepData(dat.ll, coordNames = c("lon","lat"), type="LL")
 
@@ -27,12 +28,11 @@ plot(density(abs(na.omit(md$angle))))
 plot(density(na.omit(md$step)), xlim=c(0,100))
 
 #Starting values
-# mean step lengths for state 1 (residency) and state 2 (migration)
+# mean step lengths for state 1 (stationary) and state 2 (movement)
 mu0 <- c(0.1,75)
 #Step SD
 sigma0 <- c(1,100)
-zeromass0 <- c(0,0)
-stepPar0 <- c(mu0,sigma0, zeromass0)
+stepPar0 <- c(mu0,sigma0)
 #Angle mean
 angleMean0 <- c(pi,0)
 # angle concentration
@@ -50,9 +50,7 @@ m <- fitHMM(data=md,
 plot(m, plotCI = TRUE, plotTracks=FALSE)
 
 #6. Add states to data----
-dat$winterState <- viterbi(m)
-#dat$probState1 <- stateProbs(m)[,1]
-#dat$probState2 <- stateProbs(m)[,2]
+dat$hmmstate_winter <- viterbi(m)
 
 #7. Cluster----
 ids <- unique(dat$id)
@@ -66,7 +64,6 @@ for(i in 1:length(ids)){
   mat2 <- matrix(dat.i$Y)
   mat <- cbind(mat1, mat2)
   
-  #3. Cluster----
   shift <- meanShift(mat,
                      algorithm="KDTREE",
                      bandwidth=c(1,1))
@@ -75,54 +72,64 @@ for(i in 1:length(ids)){
     mutate(wintercluster = shift[[1]]) %>% 
     rbind(dat.shift)
   
-  
 }
 
 #8. Count points per cluster----
 dat.shift.n <- dat.shift %>% 
   group_by(legid, wintercluster) %>% 
   mutate(winterclustern = n(),
-         minstate = min(winterState)) %>% 
+         minstate = min(hmmstate_winter)) %>% 
   ungroup()
 
-#9. Classify clusters----
+#9. Classify winter home ranges----
+#winter home range = a cluster that has > 7 points and at least 1 stationary point
 dat.wint <- dat.shift.n %>% 
-  dplyr::filter(minstate==1) %>% 
+  dplyr::filter(minstate==1, winterclustern > 7) %>% 
   dplyr::select(id, wintercluster) %>% 
   unique() %>% 
   group_by(id) %>% 
   mutate(winter = row_number(),
          wintern = max(winter)) %>% 
   ungroup() %>% 
-  left_join(dat.shift.n) %>% 
-  mutate(winter = ifelse(minstate==2, "wintermig", winter))
+  right_join(dat.shift.n) %>% 
+  mutate(winter = ifelse(is.na(winter), "wintermig", paste0("winter", winter)))
 
-#10. Number of clusters----
+#10. Assess birds with multiple home ranges----
 dat.n <- dat.wint %>% 
   dplyr::select(id, wintern) %>% 
   unique()
 
 table(dat.n$wintern)
-#TO DO: FIGURE OUT 6 CLUSTER BIRD, ASSESS 3 CLUSTER BIRDS
   
-#11. Visualize----
-dat.i <- dat.wint %>% 
+#Look at birds with three home ranges
+dat.3 <- dat.wint %>% 
+  dplyr::filter(wintern=="3") %>% 
   dplyr::select(id) %>% 
-  unique() %>% 
-  sample_n(1) %>% 
-  left_join(dat.wint)
+  unique()
+#973658514 - should perhaps collapse winter1, winter2, & wintermig
+#1418878943 - should perhaps collapse winter 1 & 2
+#1419060032 - 3 looks appropriate
+#279818280 - collapse winter 2 & wintermig
+#1615638072 - 3 loops appropriate
 
-dat.i <- dat.wint %>% 
-  dplyr::filter(winter=="3") %>% 
-  dplyr::select(id) %>% 
-  unique() %>% 
-  left_join(dat.wint)
+dat.tidy <- dat.wint %>% 
+  mutate(winter = case_when(id=="973658514" & winter %in% c("winter1", "winter2", "wintermig") ~ "winter1",
+                            id=="973658514" & winter=="winter3" ~ "winter2",
+                            id=="1418878943" & winter %in% c("winter1", "winter2") ~ "winter1",
+                            id=="1418878943" & winter=="winter3" ~ "winter2",
+                            id=="279818280" & winter %in% c("winter2", "wintermig") ~ "winter2",
+                            !is.na(winter) ~ winter)) %>% 
+  dplyr::select(study, id, sensor, sex, mass, lat, lon, X, Y, year, date, doy, segment, season, stopover, winter)
 
-ggplot(dat.i) +
-  geom_point(aes(x=lon, y=lat, colour=winter, shape=factor(winterState))) +
-  facet_grid(winteryear~id) +
-  scale_colour_viridis_d()
+#11. Put back together with other data----
+dat.all <- dat.raw %>% 
+  dplyr::filter(season!="winter") %>% 
+  mutate(winter = "other") %>% 
+  dplyr::select(study, id, sensor, sex, mass, lat, lon, X, Y, year, date, doy, segment, season, stopover, winter) %>% 
+  rbind(dat.tidy) 
+
+table(dat.all$season, dat.all$winter)
 
 #12. Save----
-write.csv(dat.wint, "Data/LBCUSegmented&Stopover&WinterData.csv", row.names = FALSE)
-write.csv(dat.wint, "/Users/ellyknight/Dropbox/LBCU/LBCUSegmented&Stopover&WinterData.csv", row.names = FALSE)
+write.csv(dat.all, "Data/LBCU_FilteredData_Segmented.csv", row.names = FALSE)
+write.csv(dat.all, "/Users/ellyknight/Dropbox/LBCU/LBCU_FilteredData_Segmented.csv", row.names = FALSE)
