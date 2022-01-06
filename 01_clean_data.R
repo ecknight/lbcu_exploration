@@ -8,8 +8,6 @@ library(data.table)
 
 options(scipen=99999)
 
-#TO DO: STILL NEED TO ADD MEXICO DATA####
-
 #1. Read in data----
 
 #1a. Argos data----
