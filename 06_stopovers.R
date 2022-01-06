@@ -5,18 +5,19 @@ library(moveHMM)
 options(scipen=9999)
 
 #1. Read in and filter data----
-dat.raw <- read.csv("Data/LBCUSegmentedData.csv") %>% 
+dat.raw <- read.csv("Data/LBCUFiltered&Predicted&Legged&SeasonedData.csv") %>% 
   mutate(date = ymd_hms(date),
          year = year(date))
 
 dat <- dat.raw %>% 
   dplyr::filter(season %in% c("fallmig", "springmig")) %>% 
-#  dplyr::select(legid, lat, lon) %>% 
-  rename(ID=legid) %>% 
-  dplyr::filter(ID!="164383320-2017-1spring")
+  rename(ID=legid)
+
+dat.ll <-  dat %>% 
+  dplyr::select(ID, lon, lat)
 
 #2. Prep for HMM----
-md <- prepData(dat, coordNames = c("lon","lat"), type="LL")
+md <- moveHMM::prepData(dat.ll, coordNames = c("lon","lat"), type="LL")
 
 #3. Choose starting parameters----
 ## Visualize to choose initial parameters
@@ -29,9 +30,7 @@ plot(density(na.omit(md$step)), xlim=c(0,100))
 mu0 <- c(0.1,75)
 #Step SD
 sigma0 <- c(1,100)
-zeromass0 <- c(0,0)
-stepPar0 <- c(mu0,sigma0, zeromass0)
-
+stepPar0 <- c(mu0,sigma0)
 #Angle mean
 angleMean0 <- c(pi,0)
 # angle concentration
@@ -49,18 +48,18 @@ m <- fitHMM(data=md,
 plot(m, plotCI = TRUE, plotTracks=FALSE)
 
 #5. Add states to data----
-dat$stopoverState <- viterbi(m)
+dat$hmmstate_stopover <- viterbi(m)
 #dat$probState1 <- stateProbs(m)[,1]
 #dat$probState2 <- stateProbs(m)[,2]
 
 #6. Put data backtogether----
 dat.stop <- dat.raw %>% 
-  anti_join(dat %>% 
+  anti_join(dat.ll %>% 
               dplyr::rename(legid=ID)) %>% 
-  mutate(stopoverState = NA) %>% 
+  mutate(hmmstate_stopover = NA) %>% 
   rbind(dat %>% 
           dplyr::rename(legid=ID)) %>% 
-  mutate(stopover = ifelse(stopoverState==1, 1, 0),
+  mutate(stopover = ifelse(hmmstate_stopover==1, 1, 0),
          stopover = ifelse(is.na(stopover), 0, stopover))
 
 #7. Visualize----
@@ -68,24 +67,5 @@ ggplot(dat.stop) +
   geom_point(aes(x=lon, y=lat, colour=factor(stopover)), size=3, alpha=0.5) +
   facet_wrap(~season)
 
-ids <- unique(dat.stop$id)
-
-dat.stop$stopover <- factor(dat.stop$stopover, levels=c(0, 1), labels=c("other", "stopover"))
-
-for(i in 1:length(ids)){
-  
-  dat.i <- dat.stop %>% 
-    dplyr::filter(id==ids[i])
-  
-  ggplot(dat.i) +
-    geom_path(aes(x=X, y=Y)) +
-    geom_point(aes(x=X, y=Y, colour = stopover), size=3, alpha = 0.7) +
-    facet_grid(season~year)
-  
-#  ggsave(filename=paste0("Figures/Stopover/", ids[i], ".jpeg"))
-  
-}
-
 #8. Save----
-write.csv(dat.stop, "Data/LBCUSegmented&StopoverData.csv", row.names = FALSE)
-write.csv(dat.stop, "/Users/ellyknight/Dropbox/LBCU/LBCUSegmented&StopoverData.csv", row.names = FALSE)
+write.csv(dat.stop, "Data/LBCUFiltered&Predicted&Legged&Seasoned&StopoverData.csv", row.names = FALSE)
