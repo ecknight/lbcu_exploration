@@ -153,7 +153,7 @@ length(unique(dat.dep$legid))
 table(dat.depart$segment)
 #432
 
-#6. Filter out 17 migration segments that weren't completed birds----
+#6. Filter out 17 migration segments that weren't completed----
 dat.arr <- dat.depart %>%
   dplyr::filter(!legid %in%c("1418934379-2021-1spring",
                                "99900-2021-2fall",
