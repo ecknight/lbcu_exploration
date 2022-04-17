@@ -9,7 +9,7 @@ dat <- read.csv("Data/LBCUCleanedData.csv") %>%
   arrange(id, datetime)
 
 length(unique(dat$id))
-#128 birds
+#158 birds
 
 #2. Filter with foiegras----
 #Wrangle
@@ -38,7 +38,7 @@ p
 
 saveRDS(fit24, file = "Foiegras24h_rw.rds")
 
-fit24 <- readRDS("Foiegras24h_rw.rds")
+#fit24 <- readRDS("Foiegras24h_rw.rds")
 
 #3. Create predictions for each day----
 g <- grab(fit24, what = "predicted", as_sf = FALSE) %>% 
@@ -90,4 +90,4 @@ write.csv(dat.meta, "Data/LBCUFilteredData.csv", row.names = FALSE)
 
 #7. Number of birds----
 length(unique(dat.g$id))
-#128
+#158
