@@ -8,7 +8,7 @@ dat.raw <- read.csv("Data/LBCUFiltered&Predicted&LeggedData.csv")
 
 #number of birds
 length(unique(dat.raw$id))
-#128
+#158
 
 #2. Add ID for each cluster of HMM states----
 legs <- unique(dat.raw$legid)
@@ -112,8 +112,9 @@ dat.dep <- dat %>%
 
 #5. Classify departure----
 #departure = beginning of earliest state 2 cluster after nsd > 20000000000
-#2 departures done manually because nsd < 20000000 and migration very fast
-#6 additional departures done manually because nsd > 200000000 on breeding grounds
+#11 departures done manually because nsd < 20000000 and migration very fast
+#7 additional departures done manually because nsd > 200000000 on stationary grounds
+#1 done manually because all sorts of roaming around
 dat.depart <- dat.dep %>% 
   dplyr::filter(hmmstate==2,
                 nsd > 20000000000) %>% 
@@ -131,6 +132,7 @@ dat.depart <- dat.dep %>%
   mutate(segment = "depart") %>% 
   right_join(dat.dep) %>% 
   mutate(segment = case_when(legid=="164383320-2017-1spring" & doy==72 ~ "depart",
+                             legid=="164383320-2018-1spring" & doy==77 ~ "depart",
                              legid=="281981414-2018-1spring" & doy==69 ~ "depart",
                              legid=="46694077-2014-1spring" & doy==93 ~ "depart",
                              legid=="94033-2009-2fall" & doy==162 ~ "depart",
@@ -138,22 +140,62 @@ dat.depart <- dat.dep %>%
                              legid=="279282698-2019-1spring" & doy==75 ~ "depart",
                              legid=="279818280-2018-1spring" & doy==88 ~ "depart",
                              legid=="145696972-2016-2fall" & doy==168 ~ "depart",
+                            legid=="1953212667-2008-2fall" & doy==171 ~ "depart",
+                            legid=="1953212669-2008-2fall" & doy==183 ~ "depart",
+                            legid=="1953212672-2009-1spring" & doy==87 ~ "depart",
+                            legid=="1953212676-2011-1spring" & doy==77 ~ "depart",
+                            legid=="1953212677-2008-2fall" & doy==176 ~ "depart",
+                            legid=="1953212677-2015-2fall" & doy==165 ~ "depart",
+                            legid=="1953212677-2016-1spring" & doy==87 ~ "depart",
+                            legid=="1953212677-2018-1spring" & doy==69 ~ "depart",
+                            legid=="1953212677-2020-1spring" & doy==86 ~ "depart",
+                            legid=="1953212663-2010-2fall" & doy==184 ~ "depart",
+                            legid=="1953212669-2009-1spring" & doy==96 ~ "depart",
+                            legid=="890854392-2019-2fall" & doy==181 ~ "depart",
                              !is.na(segment) ~ segment),
          segment = ifelse(legid=="46694077-2014-1spring" & doy==101, NA, segment),
          segment = ifelse(legid=="94033-2009-2fall" & doy==295, NA, segment),
-         segment = ifelse(legid=="188150741-2019-1spring" & doy==91, NA, segment),
-         segment = ifelse(legid=="279282698-2019-1spring" & doy==33, NA, segment),
-         segment = ifelse(legid=="279818280-2018-1spring" & doy==33, NA, segment),
-         segment = ifelse(legid=="145696972-2016-2fall" & doy==136, NA, segment)) %>% 
+         segment = ifelse(legid=="188150741-2019-1spring" & doy==100, NA, segment),
+         segment = ifelse(legid=="279282698-2019-1spring" & doy==54, NA, segment),
+         segment = ifelse(legid=="279818280-2018-1spring" & doy==55, NA, segment),
+         segment = ifelse(legid=="145696972-2016-2fall" & doy==136, NA, segment),
+         segment = ifelse(legid=="1953212672-2009-1spring" & doy==53, NA, segment),
+         segment = ifelse(legid=="1953212676-2011-1spring" & doy==43, NA, segment),
+         segment = ifelse(legid=="1953212677-2008-2fall" & doy==188, NA, segment),
+         segment = ifelse(legid=="1953212677-2015-2fall" & doy==178, NA, segment),
+         segment = ifelse(legid=="1953212677-2016-1spring" & doy==51, NA, segment),
+         segment = ifelse(legid=="1953212677-2018-1spring" & doy==43, NA, segment),
+         segment = ifelse(legid=="1953212677-2020-1spring" & doy==45, NA, segment),
+         segment = ifelse(legid=="1953212667-2008-2fall" & doy==203, NA, segment),
+         segment = ifelse(legid=="1953212669-2008-2fall" & doy==191, NA, segment),
+         segment = ifelse(legid=="890854392-2019-2fall" & doy==348, NA, segment)) %>% 
   dplyr::filter(segment=="depart") %>% 
   full_join(dat.dep)
 
 #check if # of departures is same as # of legids
 length(unique(dat.dep$legid))
 table(dat.depart$segment)
-#432
+#597
 
-#6. Filter out 17 migration segments that weren't completed----
+dat.2 <- dat.depart %>% 
+  dplyr::filter(segment=="depart") %>% 
+  group_by(legid) %>% 
+  mutate(n=n()) %>% 
+  ungroup() %>% 
+  dplyr::filter(n > 1) %>% 
+  arrange(legid, doy)
+
+dat.0 <- dat.depart %>% 
+  dplyr::select(legid) %>% 
+  unique() %>% 
+  anti_join(dat.depart %>% 
+              dplyr::filter(segment=="depart") %>% 
+              group_by(legid) %>% 
+              mutate(n=n()) %>% 
+              ungroup() %>% 
+              dplyr::filter(n > 0))
+
+#6. Filter out migration segments that weren't completed----
 dat.arr <- dat.depart %>%
   dplyr::filter(!legid %in%c("1418934379-2021-1spring",
                                "99900-2021-2fall",
@@ -171,10 +213,13 @@ dat.arr <- dat.depart %>%
                                "877974163-2020-1spring",
                                "46768277-2014-2fall",
                                "145698291-2021-1spring",
-                               "77638376-2015-2fall"))
+                               "77638376-2015-2fall",
+                              "99902-2021-2fall",
+                             "890834800-2020-1spring"))
+#18
 
 length(unique(dat.arr$legid))
-#432-17=415
+#597-18=579
 
 #7. Classify arrival----
 #arrival = first date of first run after departure of at least 30 stationary points
@@ -192,13 +237,30 @@ dat.migration <- dat.arr %>%
   dplyr::select(-segment2)
 
 table(dat.migration$segment)
-#415
+#579
 
 #Classify arrival via stopover rule
-#6 birds done manually due to a couple predicted nonstationary points after arrival (i.e., last segment rule doesn't work)
+#7 birds done manually due to a couple predicted nonstationary points after arrival (i.e., last segment rule doesn't work)
+#1953212670 & 1953212677 & 1953212663 done manually because lots of movement in data (suspect high argos error)
+#1 bird done manually because migration very fast
 dat.arrive.stopover <- dat.migration %>% 
   mutate(segment2 = ifelse(segment=="migration" & hmmstate==1 & staten > 30, "arrive", segment)) %>% 
   dplyr::filter(segment2=="arrive") %>% 
+  mutate(segment2 = ifelse(legid %in% c("1953212663-2008-2fall",
+                                        "1953212670-2008-2fall",
+                                        "1953212670-2009-2fall",
+                                        "1953212670-2010-2fall",
+                                        "1953212677-2008-2fall",
+                                        "1953212677-2009-2fall",
+                                        "1953212677-2011-2fall",
+                                        "1953212677-2012-2fall",
+                                        "1953212677-2013-2fall",
+                                        "1953212677-2014-2fall",
+                                        "1953212677-2015-2fall",
+                                        "1953212677-2016-2fall",
+                                        "1953212677-2017-2fall",
+                                        "1953212677-2018-2fall",
+                                        "1953212677-2019-2fall"), NA, segment2)) %>% 
   group_by(legid) %>% 
   arrange(date) %>% 
   filter(row_number()==1) %>% 
@@ -213,12 +275,30 @@ dat.arrive.stopover <- dat.migration %>%
                              legid=="145696972-2016-1spring" & doy==102 ~ "arrive",
                              legid=="172070515-2016-2fall" & doy==193 ~ "arrive",
                              legid=="279288326-2018-1spring" & doy==102 ~ "arrive",
+                             legid=="1953212663-2008-2fall" & doy==192 ~ "arrive",
+                             legid=="1953212670-2008-2fall" & doy==182 ~ "arrive",
+                             legid=="1953212670-2009-1spring" & doy==90 ~ "arrive",
+                             legid=="1953212670-2009-2fall" & doy==175 ~ "arrive",
+                             legid=="1953212670-2010-2fall" & doy==179 ~ "arrive",
+                             legid=="1953212677-2008-2fall" & doy==178 ~ "arrive",
+                             legid=="1953212677-2009-2fall" & doy==171 ~ "arrive",
+                             legid=="1953212677-2011-2fall" & doy==173 ~ "arrive",
+                             legid=="1953212677-2012-2fall" & doy==164 ~ "arrive",
+                             legid=="1953212677-2013-2fall" & doy==161 ~ "arrive",
+                             legid=="1953212677-2014-2fall" & doy==170 ~ "arrive",
+                             legid=="1953212677-2015-2fall" & doy==167 ~ "arrive",
+                             legid=="1953212677-2016-2fall" & doy==166 ~ "arrive",
+                             legid=="1953212677-2017-2fall" & doy==162 ~ "arrive",
+                             legid=="1953212677-2018-2fall" & doy==167 ~ "arrive",
+                             legid=="1953212677-2019-2fall" & doy==173 ~ "arrive",
+                             legid=="1953212677-2020-2fall" & doy==171 ~ "arrive",
+                             legid=="890854392-2019-2fall" & doy==182 ~ "arrive",
                              !is.na(segment) ~ segment))
 
 
 #Check number classified
 table(dat.arrive.stopover$segment)
-#317 - 98 missing
+#446 - 133 missing
 
 #Find missing ids
 arrive.ids <- dat.arr %>% 
@@ -229,7 +309,16 @@ arrive.ids <- dat.arr %>%
               dplyr::select(legid) %>% 
               unique())
 nrow(arrive.ids)
-#98
+#133
+
+#check if any have 2
+dat.2 <- dat.arrive.stopover %>% 
+  dplyr::filter(segment=="arrive") %>% 
+  group_by(legid) %>% 
+  mutate(n=n()) %>% 
+  ungroup() %>% 
+  dplyr::filter(n > 1) %>% 
+  arrange(legid, doy)
 
 #Classify arrival for remaining ids using last segment rule
 dat.arrive.last <- dat.migration %>% 
@@ -249,7 +338,7 @@ dat.arrive.last <- dat.migration %>%
   
 
 table(dat.arrive.last$segment)
-#98
+#133
 
 #Put two arrival classifications back together
 dat.arrive <- dat.arrive.stopover %>% 
@@ -257,7 +346,7 @@ dat.arrive <- dat.arrive.stopover %>%
   rbind(dat.arrive.last)
 
 table(dat.arrive$segment)
-#415
+#579
 
 #8. Put together & fill in the gaps as migratory or stationary----
 dat.state <- dat.depart %>% 
@@ -279,10 +368,22 @@ dat.state <- dat.depart %>%
   ungroup()
 
 table(dat.state$segment)
-#415, 432
+#579, 596
+
+dat.0 <- dat.state %>% 
+  dplyr::select(legid) %>% 
+  unique() %>% 
+  anti_join(dat.state %>% 
+              dplyr::filter(segment=="arrive") %>% 
+              group_by(legid) %>% 
+              mutate(n=n()) %>% 
+              ungroup() %>% 
+              dplyr::filter(n > 0)) %>% 
+  dplyr::filter(legid %in% dat.arr$legid)
 
 #9. Classify seasons----
 #1 done manually because arrival date unknown from transmission gap & filling not working
+#3 done manually because no gap between departure & arrival
 dat.season <- dat.state %>% 
   group_by(id) %>% 
   mutate(season=case_when(segment=="migration" & legseason=="1spring" ~ "springmig",
@@ -301,21 +402,24 @@ dat.season <- dat.state %>%
   mutate(season=case_when(legid=="172070515-2017-2fall" & doy < 169 & doy > 32 ~ "breed",
                           legid=="46768108-2015-2fall" & doy < 154 & doy > 32 ~ "breed",
                           legid=="46769588-2019-2fall" & doy < 169 & doy > 32 ~ "breed",
+                          legid=="890854392-2019-2fall" & (doy > 182 | doy < 81)  ~ "winter",
+                          legid=="890854392-2020-1spring" & doy < 81  ~ "winter",
                           !is.na(season) ~ season))
 
 table(dat.season$segment)
-#415, 432
+#577, 596
 
 #10. Add birds that never left back in----
 dat.all <- dat.nodep %>% 
   dplyr::select(study, id, sensor, sex, mass, legid, lat, lon, X, Y, date, doy, hmmstate, staten, probState2, nsd, dist, legseason, segment, season) %>% 
-  rbind(dat.season)
+  rbind(dat.season) %>% 
+  arrange(study, id, date)
 
 table(dat.all$segment)
-#415, 432
+#577, 596
 
 #11. Visualize each bird----
-ids <- unique(dat.all$id)
+ids <- sort(unique(dat.all$id))
 
 for(i in 1:length(ids)){
   
@@ -328,7 +432,7 @@ for(i in 1:length(ids)){
     scale_colour_viridis_d() +
     facet_wrap(~legid)
   
-    ggsave(filename=paste0("Figures/Season/", ids[i], ".jpeg"))
+  ggsave(filename=paste0("Figures/Season/", ids[i], ".jpeg"))
 }
 
 #12. Visualize distribution of dates----
