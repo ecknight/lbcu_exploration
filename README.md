@@ -1,2 +1,2 @@
 # lbcu_exploration
-Exploration of LBCU tracking data
+Cleaning and segmentation of LBCU tracking data
