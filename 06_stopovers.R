@@ -1,6 +1,7 @@
 library(tidyverse)
 library(lubridate)
 library(moveHMM)
+library(meanShiftR)
 
 options(scipen=9999)
 
@@ -17,7 +18,8 @@ dat.ll <-  dat %>%
   dplyr::select(ID, lon, lat)
 
 #2. Prep for HMM----
-md <- moveHMM::prepData(dat.ll, coordNames = c("lon","lat"), type="LL")
+md <- moveHMM::prepData(dat.ll, coordNames = c("lon","lat"), type="LL") %>% 
+  mutate(step = ifelse(step==0, 0.001, step))
 
 #3. Choose starting parameters----
 ## Visualize to choose initial parameters
@@ -62,10 +64,56 @@ dat.stop <- dat.raw %>%
   mutate(stopover = ifelse(hmmstate_stopover==1, 1, 0),
          stopover = ifelse(is.na(stopover), 0, stopover))
 
-#7. Visualize----
-ggplot(dat.stop) +
+#7. Add IDs to stopovers----
+ids <- dat.stop %>% 
+  dplyr::filter(stopover==1) %>% 
+  dplyr::select(id, year, season) %>% 
+  unique()
+
+dat.shift <- data.frame()
+for(i in 1:nrow(ids)){
+  dat.i <- dat.stop %>% 
+    dplyr::filter(id==ids$id[i],
+                  season==ids$season[i],
+                  year==ids$year[i],
+                  stopover==1)
+  
+  mat1 <- matrix(dat.i$X)
+  mat2 <- matrix(dat.i$Y)
+  mat <- cbind(mat1, mat2)
+  
+  shift <- meanShift(mat,
+                     algorithm="KDTREE",
+                     bandwidth=c(1,1))
+  
+  dat.shift <- dat.i %>% 
+    mutate(stopovercluster = shift[[1]]) %>% 
+    rbind(dat.shift)
+  
+}
+
+#8. Put back together and remove stopovers < 3 days----
+dat.stopclust <- dat.stop %>% 
+  left_join(dat.shift) %>% 
+  group_by(id, year, season, stopovercluster) %>% 
+  mutate(days=n()) %>% 
+  ungroup() %>% 
+  mutate(stopover = ifelse(days < 3, 0, stopover),
+         stopovercluster = ifelse(stopover==0, NA, stopovercluster),
+         days = ifelse(stopover==0, NA, days))
+
+#9. Visualize----
+ggplot(dat.stopclust %>% dplyr::filter(!is.na(stopovercluster))) +
   geom_point(aes(x=lon, y=lat, colour=factor(stopover)), size=3, alpha=0.5) +
+#  geom_point(aes(x=lon, y=lat, colour=days), size=3, alpha=0.5) +
+#  scale_colour_viridis_c() +
   facet_wrap(~season)
 
+plot.id <- ggplot(dat.stopclust %>% dplyr::filter(!is.na(stopovercluster))) +
+  geom_point(aes(x=lon, y=lat, colour=factor(stopovercluster)), size=3, alpha=0.5) +
+  facet_wrap(id~season)
+
+ggsave(plot.id, filename="Figures/StopoverClusters.jpeg", width = 18, height = 12)
+
 #8. Save----
-write.csv(dat.stop, "Data/LBCUFiltered&Predicted&Legged&Seasoned&StopoverData.csv", row.names = FALSE)
+write.csv(dat.stopclust, "Data/LBCUFiltered&Predicted&Legged&Seasoned&StopoverData.csv", row.names = FALSE)
