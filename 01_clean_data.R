@@ -15,6 +15,7 @@ raw.bc <- read.csv("Data/Movebank - BC LBCU tracking study.csv")
 raw.tx <- read.csv("Data/Movebank - MCP Long-billed Curlews Texas Gulf Coast.csv")
 raw.iw <- read.csv("Data/Movebank - Long-billed Curlew Migration from the Intermountain West.csv")
 raw.wy <- read.csv("Data/Movebank - Long-billed Curlew - Western Wyoming.csv")
+raw.usgs <- read.csv("Data/Movebank - Long-billed Curlew - USGS.csv")
 
 #Mexico - tried doing this with a loop and smartbind, but didn't work
 raw.mx.1 <- read_excel("Data/mx/Female_86872.xlsx")
@@ -23,12 +24,16 @@ raw.mx.3 <- read_excel("Data/mx/Male_86873.xlsx")
 raw.mx.4 <- read_excel("Data/mx/Male_33089.xlsx")
 raw.mx.5 <- read_excel("Data/mx/Male_33091.xlsx")
 
+#Lee tibbits/USGS
+#raw.usgs <- read.csv("Data/longBilledCurlew_USGS_ASC_argos_diagTabular_gis.csv")
+
 #Nebraska
 raw.nb <- read_excel("Data/Long-billed_Curlew_Data_Nebraska_93033_93034.xlsx")
 
 #1b. GPS data - has temp---
 raw.lt <- read.csv("Data/LT May 2020 to July 2021.csv")
 raw.ml <- read.csv("Data/ML May-Sep 2021.csv")
+raw.3612 <- read.csv("Data/CTT#3612(May 2021-Feb 2022).csv")
 
 #also has accelerometer, gyroscope, magnetometer
 raw.mn <- read.csv("Data/Movebank - Long-billed Curlew full annual cycle movement ecology - Montana.csv")
@@ -46,6 +51,8 @@ ref.mn <- read.csv("Data/Movebank - Long-billed Curlew full annual cycle movemen
   mutate(study = "MN")
 ref.mx <- read.csv("Data/mx/LBCU_ReferenceData_Mexico.csv") %>% 
   mutate(study = "MX")
+ref.usgs <- read.csv("Data/Movebank - Long-billed Curlew - USGS - Metadata.csv") %>% 
+  mutate(study = "USGS")
 
 #2. Clean each data source----
 dat.bc <- raw.bc %>% 
@@ -78,6 +85,14 @@ dat.wy <- raw.wy %>%
   rename(datetime = timestamp, long = location.long, lat= location.lat, error = argos.error.radius, smaj = argos.semi.major, smin = argos.semi.minor, eor = argos.orientation, sensor = sensor.type, id = individual.id, tag = tag.id, argos = argos.lc) %>% 
   mutate(datetime = ymd_hms(datetime),
          study = "WY") %>% 
+  dplyr::select(id, tag, datetime, long, lat, argos, error, smaj, smin, eor, sensor, study) %>% 
+  mutate(depseason = "breed")
+
+dat.usgs <- raw.usgs %>% 
+  dplyr::filter(algorithm.marked.outlier!="true") %>% 
+  rename(datetime = timestamp, long = location.long, lat= location.lat, error = argos.error.radius, smaj = argos.semi.major, smin = argos.semi.minor, eor = argos.orientation, sensor = sensor.type, id = individual.id, tag = tag.id, argos = argos.lc) %>% 
+  mutate(datetime = ymd_hms(datetime),
+         study = "USGS") %>% 
   dplyr::select(id, tag, datetime, long, lat, argos, error, smaj, smin, eor, sensor, study) %>% 
   mutate(depseason = "breed")
 
@@ -124,6 +139,21 @@ dat.ml <- raw.ml %>%
          sensor="GPS",
          study="Jay",
          datetime = ymd_hms(datetime)) %>% 
+  dplyr::select(id, tag, datetime, long, lat, argos, error, smaj, smin, eor, sensor, study) %>% 
+  mutate(depseason = "breed")
+
+dat.3612 <- raw.lt %>% 
+  rename(datetime = GPS_YYYY.MM.DD_HH.MM.SS, long=lon, tag = serial) %>% 
+  dplyr::filter(fix==3) %>% 
+  mutate(sensor="GPS",
+         error = 10,
+         smaj = NA, 
+         smin = NA,
+         eor = NA,
+         argos = "G",
+         study = "Jay", 
+         id = 99902,
+         datetime = mdy_hm(datetime)) %>% 
   dplyr::select(id, tag, datetime, long, lat, argos, error, smaj, smin, eor, sensor, study) %>% 
   mutate(depseason = "breed")
 
@@ -187,25 +217,32 @@ dat.mx <- rbind(dat.mx.13, dat.mx.24, dat.mx.5) %>%
          eor = as.numeric(eor))  %>% 
   mutate(depseason = "winter")
 
+#dat.usgs <- raw.usgs %>%
+#  dplyr::rename(id = Animal_ID, tag = PTT, argos = Location_Class, error = Error_Radius, smaj = #Semimajor_Axis, smin = Semiminor_Axis, eor = Ellipse_Orientation, long = Lon_Solution_1, lat = #Lat_Solution_1) %>% 
+#  mutate(sensor = "Argos Doppler Shift",
+#         study = "USGS",
+#         datetime = ymd_hms(Location_Datetime_UTC)) %>% 
+#  dplyr::select(id, tag, datetime, long, lat, argos, error, smaj, smin, eor, sensor, study) %>% 
+#  mutate(depseason = "breed") %>% 
+#  unique() %>% 
+#  arrange(tag, datetime)
+
 #3. Tidy metadata----
-ref <- smartbind(ref.tx, ref.bc, ref.iw, ref.mn, ref.wy) %>% 
+ref <- smartbind(ref.tx, ref.bc, ref.iw, ref.mn, ref.wy, ref.usgs) %>% 
   dplyr::rename(sex = animal_sex, id = animal_id, tag = tag_id, name = animal_local_identifier, on = deploy_on_timestamp, off = deploy_off_timestamp) %>% 
-  dplyr::select(study, sex, id, tag, name, on, off) %>% 
   dplyr::filter(!is.na(id)) %>% 
   unique() %>% 
   mutate(on = ymd_hms(on),
-         off = ymd_hms(off),
-         mass = NA) %>% 
-  rbind(ref.mx %>% 
+         off = ymd_hms(off)) %>% 
+  smartbind(ref.mx %>% 
               mutate(on = dmy(on),
                      off = dmy(off),
                      tag = paste0(id, 1),
-                     name = NA) %>% 
-              dplyr::select(study, sex, id, tag, name, on, off, mass))
-
+                     name = NA)) %>% 
+  dplyr::select(study, sex, id, tag, name, on, off, mass)
 
 #4. Put together----
-dat.raw <- rbind(dat.bc, dat.iw, dat.lt, dat.ml, dat.mn, dat.tx, dat.mx, dat.nb, dat.wy) %>% 
+dat.raw <- rbind(dat.bc, dat.iw, dat.lt, dat.ml, dat.3612, dat.mn, dat.tx, dat.mx, dat.nb, dat.wy, dat.usgs) %>% 
   left_join(ref) %>% 
   mutate(year = year(datetime),
          doy = yday(datetime),
@@ -295,4 +332,4 @@ write.csv(dat.clean, "Data/LBCUCleanedData.csv", row.names = FALSE)
 
 #12. Number of birds----
 length(unique(dat.clean$id))
-#128
+#158
