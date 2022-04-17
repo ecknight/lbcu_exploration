@@ -7,9 +7,9 @@ dat.filter <- read.csv("Data/LBCU_FilteredData_Segmented.csv")
 
 #2. Wrangle----
 dat.join <- dat.filter %>% 
-  dplyr::select(study, id, year, doy, segment, season, stopover, winter) %>% 
+  dplyr::select(study, id, year, doy, segment, season, stopover, stopovercluster, winter) %>% 
   inner_join(dat.raw) %>% 
-  dplyr::select(study, id, name, tag, depseason, sensor, sex, mass, lat, long, year, datetime, doy, argos, error, smaj, smin, eor, segment, season, stopover, winter)
+  dplyr::select(study, id, name, tag, depseason, sensor, sex, mass, lat, long, year, datetime, doy, argos, error, smaj, smin, eor, segment, season, stopover, stopovercluster, winter)
 
 #3. Save----
 write.csv(dat.join, "Data/LBCU_RawData_Segmented.csv", row.names = FALSE)
