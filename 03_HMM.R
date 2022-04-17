@@ -52,6 +52,6 @@ dat$probState2 <- stateProbs(m)[,2]
 
 #6. check # of birds----
 length(unique(dat$id))
-#128 - good
+#158 - good
 
 write.csv(dat, "Data/LBCUFiltered&PredictedData.csv", row.names = FALSE)
