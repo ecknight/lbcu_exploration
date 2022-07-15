@@ -259,7 +259,7 @@ dat1 <- dat.raw %>%
           dplyr::filter(is.na(off))) %>% 
   dplyr::filter(!is.na(lat),
                 long < -70,
-                argos %in% c("0", "1", "2", "3", "G"))
+                argos %in% c("0", "1", "2", "3", "G", "A", "B"))
 
 #6. Remove duplicate timestamps----
 date.freq <- data.frame(table(dat1$datetime, dat1$id)) %>% 
@@ -322,7 +322,8 @@ dat.clean <- dat.traj %>%
                 !(id==1378421381 & year==2020 & doy < 151),
                 !(id==145698291 & year==2021 & doy > 129),
                 !(id==290352179 & year==2021 & doy > 103),
-                !(id==46768189))
+                !(id==46768189),
+                !(id %in% c(46769927, 46770723) & long > -100))
 #46768189 only has points for one day
 #145698291 2021 > doy 129 is likely dead
 #290352179 died on migration, remove pts > doy 103 in 2021
