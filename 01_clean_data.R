@@ -318,7 +318,7 @@ for(i in 1:nrow(ids)){
 dat.clean <- dat.traj %>% 
   dplyr::filter(!(id==290350903 & long > -106),
                 !(str_sub(id, 1, 5)=="14255" & doy==123 & year==2019),
-                !(study=="NB" & argos %in% c("0", "1")),
+#                !(study=="NB" & argos %in% c("0", "1")),
                 !(id==1378421381 & year==2020 & doy < 151),
                 !(id==145698291 & year==2021 & doy > 129),
                 !(id==290352179 & year==2021 & doy > 103),
