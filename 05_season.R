@@ -104,6 +104,7 @@ dat.nodep <- dat %>%
   rbind(dat.gap) %>% 
   unique() %>% 
   mutate(season = case_when(legid=="86872-2009-2fall" ~ "winter",
+                            legid=="46200876-2017-2fall" ~ "winter",
                             !is.na(season) ~ season))
 
 #Data for birds that did start migration to carry on to next step
@@ -133,6 +134,7 @@ dat.depart <- dat.dep %>%
   right_join(dat.dep) %>% 
   mutate(segment = case_when(legid=="164383320-2017-1spring" & doy==72 ~ "depart",
                              legid=="164383320-2018-1spring" & doy==77 ~ "depart",
+                             legid=="164383320-2017-2fall" & doy==174 ~ "depart",
                              legid=="281981414-2018-1spring" & doy==69 ~ "depart",
                              legid=="46694077-2014-1spring" & doy==93 ~ "depart",
                              legid=="94033-2009-2fall" & doy==162 ~ "depart",
@@ -168,7 +170,8 @@ dat.depart <- dat.dep %>%
          segment = ifelse(legid=="1953212677-2020-1spring" & doy==45, NA, segment),
          segment = ifelse(legid=="1953212667-2008-2fall" & doy==203, NA, segment),
          segment = ifelse(legid=="1953212669-2008-2fall" & doy==191, NA, segment),
-         segment = ifelse(legid=="890854392-2019-2fall" & doy==348, NA, segment)) %>% 
+         segment = ifelse(legid=="890854392-2019-2fall" & doy==348, NA, segment),
+         segment = ifelse(legid=="164383320-2017-2fall" & doy==181, NA, segment)) %>% 
   dplyr::filter(segment=="depart") %>% 
   full_join(dat.dep)
 
@@ -215,11 +218,12 @@ dat.arr <- dat.depart %>%
                                "145698291-2021-1spring",
                                "77638376-2015-2fall",
                               "99902-2021-2fall",
-                             "890834800-2020-1spring"))
-#18
+                             "890834800-2020-1spring",
+                             "1953212690-2011-1spring"))
+#20
 
 length(unique(dat.arr$legid))
-#597-18=579
+#597-20=577
 
 #7. Classify arrival----
 #arrival = first date of first run after departure of at least 30 stationary points
@@ -237,7 +241,7 @@ dat.migration <- dat.arr %>%
   dplyr::select(-segment2)
 
 table(dat.migration$segment)
-#579
+#577
 
 #Classify arrival via stopover rule
 #7 birds done manually due to a couple predicted nonstationary points after arrival (i.e., last segment rule doesn't work)
@@ -298,7 +302,7 @@ dat.arrive.stopover <- dat.migration %>%
 
 #Check number classified
 table(dat.arrive.stopover$segment)
-#446 - 133 missing
+#446 - 131 missing
 
 #Find missing ids
 arrive.ids <- dat.arr %>% 
@@ -309,7 +313,7 @@ arrive.ids <- dat.arr %>%
               dplyr::select(legid) %>% 
               unique())
 nrow(arrive.ids)
-#133
+#131
 
 #check if any have 2
 dat.2 <- dat.arrive.stopover %>% 
@@ -338,7 +342,7 @@ dat.arrive.last <- dat.migration %>%
   
 
 table(dat.arrive.last$segment)
-#133
+#131
 
 #Put two arrival classifications back together
 dat.arrive <- dat.arrive.stopover %>% 
@@ -346,7 +350,7 @@ dat.arrive <- dat.arrive.stopover %>%
   rbind(dat.arrive.last)
 
 table(dat.arrive$segment)
-#579
+#577
 
 #8. Put together & fill in the gaps as migratory or stationary----
 dat.state <- dat.depart %>% 
@@ -368,9 +372,9 @@ dat.state <- dat.depart %>%
   ungroup()
 
 table(dat.state$segment)
-#579, 596
+#576, 596
 
-dat.0 <- dat.state %>% 
+dat.0 <- dat.season %>% 
   dplyr::select(legid) %>% 
   unique() %>% 
   anti_join(dat.state %>% 
@@ -404,10 +408,14 @@ dat.season <- dat.state %>%
                           legid=="46769588-2019-2fall" & doy < 169 & doy > 32 ~ "breed",
                           legid=="890854392-2019-2fall" & (doy > 182 | doy < 81)  ~ "winter",
                           legid=="890854392-2020-1spring" & doy < 81  ~ "winter",
-                          !is.na(season) ~ season))
+                          legid=="46200876-2017-2fall" ~ "winter",
+                          !is.na(season) ~ season)) %>% 
+  mutate(segment = case_when(legid=="890854392-2019-2fall" & doy==181 ~ "depart",
+                             legid=="890854392-2019-2fall" & doy==182 ~ "arrive",
+                             !is.na(segment) ~ segment))
 
 table(dat.season$segment)
-#577, 596
+#577, 597 - good
 
 #10. Add birds that never left back in----
 dat.all <- dat.nodep %>% 
@@ -416,7 +424,7 @@ dat.all <- dat.nodep %>%
   arrange(study, id, date)
 
 table(dat.all$segment)
-#577, 596
+#577, 597
 
 #11. Visualize each bird----
 ids <- sort(unique(dat.all$id))
