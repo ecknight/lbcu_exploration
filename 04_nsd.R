@@ -42,7 +42,9 @@ dat.traj <- rbindlist(traj) %>%
   rename(X=x, Y=y) %>% 
   full_join(dat.utm) %>% 
   rename(nsd = R2n) %>% 
-  arrange(legid, date)
+  arrange(legid, date) %>% 
+  mutate(dist = dist/1000,
+         nsd = nsd/1000000)
 
 #3. Visualize----
 #Visualize
@@ -59,7 +61,7 @@ for(i in 1:length(ids)){
   
   ggplot(dat.i) +
     geom_line(aes(x=migdoy, y=nsd)) +
-    facet_wrap(~legid, scales="free") +
+    facet_wrap(~legid, scales="free_x") +
     ggtitle(ids[i])
   
   ggsave(filename=paste0("Figures/ltraj/", ids[i], ".jpeg"))
