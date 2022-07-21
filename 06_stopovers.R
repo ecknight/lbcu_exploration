@@ -50,17 +50,22 @@ m <- fitHMM(data=md,
 plot(m, plotCI = TRUE, plotTracks=FALSE)
 
 #5. Add states to data----
-dat$hmmstate_stopover <- viterbi(m)
+dat.out <- data.frame(md) %>% 
+  mutate(hmmstate_stopover = viterbi(m)) %>% 
+  rename(legid=ID,
+         lat=y,
+         lon=x) %>% 
+  dplyr::select(-step, -angle) %>% 
+  left_join(dat %>% 
+              rename(legid=ID))
 #dat$probState1 <- stateProbs(m)[,1]
 #dat$probState2 <- stateProbs(m)[,2]
 
 #6. Put data backtogether----
 dat.stop <- dat.raw %>% 
-  anti_join(dat.ll %>% 
-              dplyr::rename(legid=ID)) %>% 
+  anti_join(dat.out) %>% 
   mutate(hmmstate_stopover = NA) %>% 
-  rbind(dat %>% 
-          dplyr::rename(legid=ID)) %>% 
+  rbind(dat.out) %>% 
   mutate(stopover = ifelse(hmmstate_stopover==1, 1, 0),
          stopover = ifelse(is.na(stopover), 0, stopover))
 
