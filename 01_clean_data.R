@@ -323,7 +323,8 @@ dat.clean <- dat.traj %>%
                 !(id==145698291 & year==2021 & doy > 129),
                 !(id==290352179 & year==2021 & doy > 103),
                 !(id==46768189),
-                !(id %in% c(46769927, 46770723) & long > -100))
+                !(id %in% c(46769927, 46770723) & long > -100),
+                !(id==46200876 & year==2017 & doy > 55))
 #46768189 only has points for one day
 #145698291 2021 > doy 129 is likely dead
 #290352179 died on migration, remove pts > doy 103 in 2021
